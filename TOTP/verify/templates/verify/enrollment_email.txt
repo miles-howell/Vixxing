@@ -1,0 +1,17 @@
+Hi {{ first_name }},
+
+Welcome to HelpDesk multi-factor authentication (MFA) setup.
+
+MFA adds a quick second step when you verify your identity, and it's required before we can assist you over the phone.
+
+How to enroll (takes about a minute):
+  1. You should already have the Microsoft Authenticator app installed on your phone. If not, you can download it from your phone's app store.
+  2. Open the app and click on the blue "+" button to add a new MFA enrollment.
+  3. Scan the QR code attached to this email.
+  4. You're done! The app will now show a 6-digit code that refreshes every 30 seconds. Read that code to the HelpDesk agent when asked.
+
+The QR code is attached to this email as enrollment_qr.png.
+
+Questions? Just reply to this email or call the HelpDesk.
+
+— CHP HelpDesk

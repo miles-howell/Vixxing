@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+  <body style="margin:0; padding:0; background-color:#f4f6f8; font-family:Segoe UI, Arial, sans-serif; color:#2d3748;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f8; padding:24px 0;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="600" cellpadding="0" cellspacing="0"
+                 style="background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+            <tr>
+              <td style="background-color:#005a9c; padding:24px 32px;">
+                <h1 style="margin:0; color:#ffffff; font-size:20px; font-weight:600;">
+                  HelpDesk &middot; MFA Enrollment
+                </h1>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:32px;">
+                <p style="margin:0 0 16px; font-size:16px;">Hi {{ first_name }},</p>
+                <p style="margin:0 0 16px; font-size:15px; line-height:1.6;">
+                  Setting up <strong>multi-factor authentication (MFA)</strong> adds a quick
+                  second step when you verify your identity. It's required before we can
+                  assist you over the phone, and it only takes about a minute.
+                </p>
+
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                       style="margin:24px 0; background-color:#f7fafc; border-radius:10px;">
+                  <tr>
+                    <td style="padding:24px; text-align:center;">
+                      <p style="margin:0 0 16px; font-size:14px; color:#4a5568;">
+                        Open your authenticator app and scan this code:
+                      </p>
+                      <img src="cid:{{ qr_cid }}" alt="Your MFA enrollment QR code"
+                           width="200" height="200"
+                           style="display:block; margin:0 auto; border:1px solid #e2e8f0; border-radius:8px; background:#ffffff;">
+                      <p style="margin:16px 0 0; font-size:12px; color:#718096;">
+                        Can't see the image? The same QR code is attached to this email as
+                        <strong>enrollment_qr.png</strong>.
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+
+                <p style="margin:0 0 12px; font-size:15px; font-weight:600;">Enroll in 4 steps</p>
+                <ol style="margin:0 0 20px; padding-left:20px; font-size:15px; line-height:1.7;">
+                  <li>Install an authenticator app (Microsoft or Google Authenticator both work).</li>
+                  <li>In the app, choose <strong>&ldquo;Scan a QR code.&rdquo;</strong></li>
+                  <li>Scan the code above (or the attached image).</li>
+                  <li>You're set! The app shows a 6-digit code that refreshes every 30 seconds &mdash;
+                      read that to the agent when asked.</li>
+                </ol>
+
+                <p style="margin:0; font-size:14px; color:#4a5568;">
+                  Questions? Just reply to this email or call the HelpDesk.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:20px 32px; background-color:#f7fafc; border-top:1px solid #edf2f7;">
+                <p style="margin:0; font-size:12px; color:#a0aec0;">
+                  This message was sent by HelpDesk.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
