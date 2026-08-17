@@ -6,7 +6,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Load environment variables from .env file
-load_dotenv(os.path.join(BASE_DIR, '.env'))
+load_dotenv(os.path.join(BASE_DIR, '.env'), override=True)
 
 # Baking cookies...
 SESSION_COOKIE_NAME = "totp_sessionid"
@@ -18,7 +18,7 @@ CSRF_COOKIE_SECURE = False
 
 SECRET_KEY = os.getenv('SECRET_KEY')
 
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['*']
 #CSRF_TRUSTED_ORIGINS = ['*']
