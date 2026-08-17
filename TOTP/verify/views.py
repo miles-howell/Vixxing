@@ -13,6 +13,7 @@ from django.http import JsonResponse
 from django.contrib.auth.models import User
 from django.contrib.admin.views.decorators import staff_member_required
 from django.views.decorators.http import require_POST
+from django.contrib.auth.models import Group
 
 # Create your views here.
 @staff_member_required
@@ -111,12 +112,15 @@ def add_employee(request):
         if User.objects.filter(username=username).exists():
             username = f"{username}_{User.objects.count()}"
 
-        User.objects.create_user(
+        new_user = User.objects.create_user(
             username=username,
             email=email,
             first_name=first_name,
             last_name=last_name
         )
+
+        employee_group = Group.objects.get_or_create(name="Employees")
+        new_user.groups.add(employee_group)
         return JsonResponse({'status': 'success'})
 
     return JsonResponse({'status': 'error', 'message': 'Invalid method.'})
@@ -160,6 +164,6 @@ def verify_caller(request, user_id):
 @staff_member_required
 def helpdesk_dashboard(request):
     # FIX 4: Update the related name to match Django's default lowercase model convention
-    users = User.objects.select_related('employeemfa').all()
+    users = User.objects.filter(groups__name='Employees').select_related('employeemfa')
 
     return render(request, 'verify/dashboard.html', {'users': users})

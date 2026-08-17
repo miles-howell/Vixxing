@@ -1,6 +1,6 @@
-from pathlib import Path
 import os
 from dotenv import load_dotenv
+from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -11,9 +11,9 @@ load_dotenv(os.path.join(BASE_DIR, '.env'))
 # Baking cookies...
 SESSION_COOKIE_NAME = "totp_sessionid"
 CSRF_COOKIE_NAME = "totp_csrftoken"
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
+#SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 
 SECRET_KEY = os.getenv('SECRET_KEY')
@@ -21,7 +21,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
-CSRF_TRUSTED_ORIGINS = ['*']
+#CSRF_TRUSTED_ORIGINS = ['*']
 
 # Application definition
 INSTALLED_APPS = [
@@ -128,8 +128,8 @@ MAILERS = {
 MSGRAPH_TENANT_ID = os.getenv('MSGRAPH_TENANT_ID')
 MSGRAPH_CLIENT_ID = os.getenv('MSGRAPH_CLIENT_ID')
 MSGRAPH_CLIENT_SECRET = os.getenv('MSGRAPH_CLIENT_SECRET')
-MSGRAPH_USER_ID = 'account@domain.com'
+MSGRAPH_USER_ID = os.getenv('MSGRAPH_USER_ID')
 
 
 # The default address Graph will attempt to send from
-DEFAULT_FROM_EMAIL = 'account@domain.com'
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
