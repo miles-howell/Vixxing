@@ -119,7 +119,7 @@ def add_employee(request):
             last_name=last_name
         )
 
-        employee_group = Group.objects.get_or_create(name="Employees")
+        employee_group, created = Group.objects.get_or_create(name="Employees")
         new_user.groups.add(employee_group)
         return JsonResponse({'status': 'success'})
 
