@@ -1,6 +1,7 @@
 import pyotp
 import qrcode
 import io
+import csv
 import json
 import email.utils
 from base64 import b64encode
@@ -9,11 +10,26 @@ from django.core.mail import EmailMultiAlternatives
 from email.message import MIMEPart
 from django.template.loader import render_to_string
 from .models import EmployeeMFA
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.contrib.auth.models import User
 from django.contrib.admin.views.decorators import staff_member_required
 from django.views.decorators.http import require_POST
 from django.contrib.auth.models import Group
+
+
+def _unique_username(base):
+    """Appends a numeric suffix until the username is unique."""
+    username = base
+    suffix = 1
+    while User.objects.filter(username=username).exists():
+        username = f"{base}_{suffix}"
+        suffix += 1
+    return username
+
+
+def _is_enrolled(user):
+    return user.employeemfa.is_enrolled if hasattr(user, 'employeemfa') else False
+
 
 # Create your views here.
 @staff_member_required
@@ -87,7 +103,7 @@ def generate_enrollment_qr(request, user_id):
 
     # FIX 2: Handle both Dashboard API requests (POST) and manual browser visits (GET)
     if request.method == "POST":
-        return JsonResponse({'status': 'success', 'message': 'Email sent.'})
+        return JsonResponse({'status': 'success', 'message': 'Email sent.', 'is_enrolled': employee_mfa.is_enrolled})
 
     # Fallback for manual GET requests (e.g., typing /enroll/1/ in the browser)
     buffer.seek(0)
@@ -99,31 +115,39 @@ def generate_enrollment_qr(request, user_id):
 @require_POST
 def add_employee(request):
     """Creates a new base Django User for MFA tracking"""
-    if request.method == "POST":
-        email = request.POST.get('email')
-        first_name = request.POST.get('first_name', '')
-        last_name = request.POST.get('last_name', '')
+    email = request.POST.get('email', '').strip()
+    first_name = request.POST.get('first_name', '').strip()
+    last_name = request.POST.get('last_name', '').strip()
 
-        if not email:
-            return JsonResponse({'status': 'error', 'message': 'Email required'})
+    if not email:
+        return JsonResponse({'status': 'error', 'message': 'Email required'})
 
-        username = email.split('@')[0]
-        # Ensure username uniqueness
-        if User.objects.filter(username=username).exists():
-            username = f"{username}_{User.objects.count()}"
+    if User.objects.filter(email=email).exists():
+        return JsonResponse({'status': 'error', 'message': 'A user with that email already exists.'})
 
-        new_user = User.objects.create_user(
-            username=username,
-            email=email,
-            first_name=first_name,
-            last_name=last_name
-        )
+    username = _unique_username(email.split('@')[0])
 
-        employee_group, created = Group.objects.get_or_create(name="Employees")
-        new_user.groups.add(employee_group)
-        return JsonResponse({'status': 'success'})
+    new_user = User.objects.create_user(
+        username=username,
+        email=email,
+        first_name=first_name,
+        last_name=last_name
+    )
 
-    return JsonResponse({'status': 'error', 'message': 'Invalid method.'})
+    employee_group, created = Group.objects.get_or_create(name="Employees")
+    new_user.groups.add(employee_group)
+
+    return JsonResponse({
+        'status': 'success',
+        'user': {
+            'id': new_user.id,
+            'first_name': new_user.first_name,
+            'last_name': new_user.last_name,
+            'full_name': new_user.get_full_name() or new_user.username,
+            'email': new_user.email,
+            'is_enrolled': False,
+        },
+    })
 
 @staff_member_required
 @require_POST
@@ -167,3 +191,94 @@ def helpdesk_dashboard(request):
     users = User.objects.filter(groups__name='Employees').select_related('employeemfa')
 
     return render(request, 'verify/dashboard.html', {'users': users})
+
+
+@staff_member_required
+def export_employees_csv(request):
+    """Exports Employees-group users as CSV. Never includes MFA secrets."""
+    users = User.objects.filter(groups__name='Employees').select_related('employeemfa').order_by('last_name', 'first_name')
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="employees.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow(['first_name', 'last_name', 'email', 'username', 'is_enrolled'])
+    for user in users:
+        writer.writerow([user.first_name, user.last_name, user.email, user.username, _is_enrolled(user)])
+
+    return response
+
+
+@staff_member_required
+@require_POST
+def import_employees_csv(request):
+    """Bulk-creates Employees-group users from an uploaded CSV.
+
+    Only populates the user record (name + email) - never touches MFA secrets
+    or sends enrollment emails. Each employee must still be enrolled manually.
+    """
+    csv_file = request.FILES.get('csv_file')
+    if not csv_file:
+        return JsonResponse({'status': 'error', 'message': 'No file uploaded.'})
+
+    try:
+        decoded = csv_file.read().decode('utf-8-sig')
+    except UnicodeDecodeError:
+        return JsonResponse({'status': 'error', 'message': 'File must be a UTF-8 encoded CSV.'})
+
+    reader = csv.DictReader(io.StringIO(decoded))
+    if not reader.fieldnames:
+        return JsonResponse({'status': 'error', 'message': 'CSV appears to be empty.'})
+
+    # Normalize header names ("Email", "E-Mail", "email") -> matching keys
+    field_map = {(name or '').strip().lower().replace(' ', '_').replace('-', '_'): name for name in reader.fieldnames}
+    email_key = field_map.get('email')
+    if not email_key:
+        return JsonResponse({'status': 'error', 'message': 'CSV must include an "email" column.'})
+    first_name_key = field_map.get('first_name')
+    last_name_key = field_map.get('last_name')
+
+    employee_group, _ = Group.objects.get_or_create(name="Employees")
+
+    created = []
+    skipped = []
+    for row in reader:
+        email = (row.get(email_key) or '').strip()
+        if not email:
+            continue
+        if User.objects.filter(email=email).exists():
+            skipped.append(email)
+            continue
+
+        first_name = (row.get(first_name_key) or '').strip() if first_name_key else ''
+        last_name = (row.get(last_name_key) or '').strip() if last_name_key else ''
+        username = _unique_username(email.split('@')[0])
+
+        new_user = User.objects.create_user(
+            username=username,
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+        )
+        new_user.groups.add(employee_group)
+
+        created.append({
+            'id': new_user.id,
+            'first_name': new_user.first_name,
+            'last_name': new_user.last_name,
+            'full_name': new_user.get_full_name() or new_user.username,
+            'email': new_user.email,
+            'is_enrolled': False,
+        })
+
+    return JsonResponse({'status': 'success', 'created': created, 'skipped': skipped})
+
+
+@staff_member_required
+@require_POST
+def nuke_employees(request):
+    """Deletes ALL Employees-group users. Superusers are never affected."""
+    employees = User.objects.filter(groups__name='Employees', is_superuser=False)
+    deleted_count = employees.count()
+    employees.delete()
+    return JsonResponse({'status': 'success', 'deleted_count': deleted_count})
