@@ -10,7 +10,11 @@ urlpatterns = [
     path('check/<int:user_id>/', views.verify_caller, name='verify_caller'),
     path('add-employee/', views.add_employee, name='add_employee'),
     path('unenroll/<int:user_id>/', views.unenroll_employee, name='unenroll'),
+    path('delete/<int:user_id>/', views.delete_employee, name='delete_employee'),
     path('export-employees/', views.export_employees_csv, name='export_employees'),
     path('import-employees/', views.import_employees_csv, name='import_employees'),
-    path('nuke-employees/', views.nuke_employees, name='nuke_employees'),
+    path('bulk-enroll/', views.bulk_enroll_employees, name='bulk_enroll'),
+    path('bulk-reenroll/', views.bulk_reenroll_employees, name='bulk_reenroll'),
+    path('bulk-unenroll/', views.bulk_unenroll_employees, name='bulk_unenroll'),
+    path('bulk-delete/', views.bulk_delete_employees, name='bulk_delete'),
 ]

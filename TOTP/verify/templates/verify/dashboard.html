@@ -14,12 +14,17 @@
         })();
     </script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         body { background-color: var(--bs-tertiary-bg); color: var(--bs-body-color); transition: background-color 0.15s ease, color 0.15s ease; }
-        .dashboard-container { max-width: 1000px; margin: 40px auto; background: var(--bs-body-bg); padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .dashboard-container { max-width: 1320px; margin: 40px auto; background: var(--bs-body-bg); padding: 40px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .status-text { font-weight: bold; margin-left: 10px; }
         .bulk-toggle .chevron { display: inline-block; transition: transform 0.2s ease; }
         .bulk-toggle[aria-expanded="true"] .chevron { transform: rotate(180deg); }
+        .bulk-actions-group { padding-top: 14px; margin-top: 14px; border-top: 1px solid var(--bs-border-color); }
+        #employeeTable td, #employeeTable th { vertical-align: middle; }
+        .select-col { width: 44px; }
+        .delete-col { width: 60px; }
     </style>
 </head>
 <body>
@@ -44,7 +49,7 @@
         </div>
     </div>
 
-    <!-- Bulk CSV Import / Export / Nuke -->
+    <!-- Bulk CSV Import / Export / Bulk Actions -->
     <div class="card bg-body-tertiary mb-4 border-0">
         <button type="button" class="btn w-100 text-start d-flex justify-content-between align-items-center bulk-toggle p-3" data-bs-toggle="collapse" data-bs-target="#bulkManagementBody" aria-expanded="false" aria-controls="bulkManagementBody">
             <span class="fw-semibold">Bulk Employee Management</span>
@@ -53,16 +58,26 @@
         <div class="collapse" id="bulkManagementBody">
             <div class="card-body pt-0">
                 <div class="d-flex flex-wrap align-items-center gap-2">
-                    <a href="{% url 'verify:export_employees' %}" class="btn btn-outline-secondary">Export Employees (CSV)</a>
+                    <a href="{% url 'verify:export_employees' %}" id="exportEmployeesBtn" class="btn btn-outline-secondary">Export All Employees (CSV)</a>
                     <input type="file" id="csvImportFile" accept=".csv" class="form-control" style="max-width: 280px;">
                     <button type="button" onclick="importEmployeesCsv()" class="btn btn-outline-primary">Import Employees (CSV)</button>
-                    <div class="ms-auto">
-                        <button type="button" onclick="nukeEmployees()" class="btn btn-danger">NUKE ALL EMPLOYEES</button>
+                </div>
+
+                <div class="bulk-actions-group">
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <span class="fw-semibold text-nowrap me-1">Bulk Actions:</span>
+                        <button type="button" class="btn btn-outline-primary bulk-action-btn" onclick="bulkEnrollSelected()" disabled>Enroll Selected</button>
+                        <button type="button" class="btn btn-outline-warning bulk-action-btn" onclick="bulkReenrollSelected()" disabled>Re-Enroll Selected</button>
+                        <button type="button" class="btn btn-outline-secondary bulk-action-btn" onclick="bulkUnenrollSelected()" disabled>Unenroll Selected</button>
+                        <button type="button" class="btn btn-outline-danger bulk-action-btn" onclick="bulkDeleteSelected()" disabled>Delete Selected</button>
+                        <span id="selectedCount" class="text-muted small ms-2"></span>
                     </div>
                 </div>
-                <small class="text-muted d-block mt-2">
+
+                <small class="text-muted d-block mt-3">
                     Import/export only covers names and email addresses &mdash; MFA secrets are never included.
-                    Imported employees are added as "Not Enrolled"; enroll each one individually with the button on their row.
+                    Imported employees are added as "Not Enrolled"; enroll each one individually or with Enroll Selected.
+                    Bulk actions and CSV export apply to the employees checked in the table below &mdash; if none are checked, export covers everyone.
                 </small>
             </div>
         </div>
@@ -71,18 +86,26 @@
     <!-- Real-time Search Input -->
     <input type="text" id="searchInput" class="form-control mb-4" placeholder="Search employees by name or email...">
 
+    <div class="table-responsive">
     <table class="table table-hover align-middle">
         <thead>
             <tr>
+                <th class="select-col">
+                    <input type="checkbox" class="form-check-input" id="selectAllEmployees" onchange="toggleSelectAll(this)" aria-label="Select all employees">
+                </th>
                 <th>Employee</th>
                 <th>MFA Status</th>
                 <th>Management</th>
                 <th>Verify Caller</th>
+                <th class="delete-col text-center">Delete</th>
             </tr>
         </thead>
         <tbody id="employeeTable">
             {% for user in users %}
             <tr data-user-id="{{ user.id }}">
+                <td class="select-col">
+                    <input type="checkbox" class="form-check-input employee-select-checkbox" data-user-id="{{ user.id }}" onchange="toggleEmployeeSelection({{ user.id }}, this)" aria-label="Select {{ user.get_full_name|default:user.username }}">
+                </td>
                 <td>
                     <strong>{{ user.get_full_name|default:user.username }}</strong><br>
                     <small class="text-muted">{{ user.email }}</small>
@@ -98,7 +121,7 @@
                     {% if user.employeemfa.is_enrolled %}
                         <!-- Regenerates the secret & sends new email -->
                         <button onclick="triggerEnrollment({{ user.id }}, true)" class="btn btn-sm btn-outline-warning">Regenerate QR</button>
-                        <!-- Wipes the secret entirely -->
+                        <!-- Clears enrollment, keeps the account -->
                         <button onclick="unenrollEmployee({{ user.id }})" class="btn btn-sm btn-outline-danger">Unenroll</button>
                     {% else %}
                         <!-- Standard initial enrollment -->
@@ -113,10 +136,16 @@
                     </div>
                     <span id="status_{{ user.id }}" class="status-text small"></span>
                 </td>
+                <td class="delete-col text-center">
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteEmployee({{ user.id }})" title="Delete employee" aria-label="Delete {{ user.get_full_name|default:user.username }}">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -162,8 +191,68 @@
     const enrollUrlBase = "{% url 'verify:enroll_user' 999999 %}".replace('999999/', '');
     const checkUrlBase = "{% url 'verify:verify_caller' 999999 %}".replace('999999/', '');
     const unenrollUrlBase = "{% url 'verify:unenroll' 999999 %}".replace('999999/', '');
+    const deleteUrlBase = "{% url 'verify:delete_employee' 999999 %}".replace('999999/', '');
     const importEmployeesUrl = "{% url 'verify:import_employees' %}";
-    const nukeEmployeesUrl = "{% url 'verify:nuke_employees' %}";
+    const exportEmployeesBaseUrl = "{% url 'verify:export_employees' %}";
+    const bulkEnrollUrl = "{% url 'verify:bulk_enroll' %}";
+    const bulkReenrollUrl = "{% url 'verify:bulk_reenroll' %}";
+    const bulkUnenrollUrl = "{% url 'verify:bulk_unenroll' %}";
+    const bulkDeleteUrl = "{% url 'verify:bulk_delete' %}";
+
+    // ---- Selection tracking (for bulk actions & selection-aware export) ----
+    const selectedEmployeeIds = new Set();
+
+    function getAllRowIds() {
+        return Array.from(document.querySelectorAll('#employeeTable tr[data-user-id]'))
+            .map(row => parseInt(row.dataset.userId, 10));
+    }
+
+    function updateSelectionUI() {
+        const total = getAllRowIds().length;
+        const selectedCount = selectedEmployeeIds.size;
+
+        const selectAllCheckbox = document.getElementById('selectAllEmployees');
+        selectAllCheckbox.checked = total > 0 && selectedCount === total;
+        selectAllCheckbox.indeterminate = selectedCount > 0 && selectedCount < total;
+
+        document.getElementById('selectedCount').textContent = selectedCount > 0 ? `${selectedCount} selected` : '';
+
+        document.querySelectorAll('.bulk-action-btn').forEach(btn => {
+            btn.disabled = selectedCount === 0;
+        });
+
+        const exportBtn = document.getElementById('exportEmployeesBtn');
+        if (selectedCount > 0) {
+            exportBtn.href = `${exportEmployeesBaseUrl}?ids=${Array.from(selectedEmployeeIds).join(',')}`;
+            exportBtn.textContent = `Export Selected (${selectedCount}) (CSV)`;
+        } else {
+            exportBtn.href = exportEmployeesBaseUrl;
+            exportBtn.textContent = 'Export All Employees (CSV)';
+        }
+    }
+
+    function toggleEmployeeSelection(userId, checkbox) {
+        if (checkbox.checked) selectedEmployeeIds.add(userId);
+        else selectedEmployeeIds.delete(userId);
+        updateSelectionUI();
+    }
+
+    function toggleSelectAll(checkbox) {
+        const rowCheckboxes = document.querySelectorAll('#employeeTable .employee-select-checkbox');
+        rowCheckboxes.forEach(cb => {
+            cb.checked = checkbox.checked;
+            const userId = parseInt(cb.dataset.userId, 10);
+            if (checkbox.checked) selectedEmployeeIds.add(userId);
+            else selectedEmployeeIds.delete(userId);
+        });
+        updateSelectionUI();
+    }
+
+    function clearSelection() {
+        selectedEmployeeIds.clear();
+        document.querySelectorAll('.employee-select-checkbox').forEach(cb => cb.checked = false);
+        updateSelectionUI();
+    }
 
     // ---- Row rendering helpers (shared by server-rendered & dynamically-added rows) ----
     function escapeHtml(str) {
@@ -189,6 +278,9 @@
     function buildEmployeeRowHtml(user) {
         const displayName = (user.full_name && user.full_name.trim()) ? user.full_name : user.email;
         return `<tr data-user-id="${user.id}">
+                <td class="select-col">
+                    <input type="checkbox" class="form-check-input employee-select-checkbox" data-user-id="${user.id}" onchange="toggleEmployeeSelection(${user.id}, this)" aria-label="Select ${escapeHtml(displayName)}">
+                </td>
                 <td>
                     <strong>${escapeHtml(displayName)}</strong><br>
                     <small class="text-muted">${escapeHtml(user.email)}</small>
@@ -202,16 +294,23 @@
                     </div>
                     <span id="status_${user.id}" class="status-text small"></span>
                 </td>
+                <td class="delete-col text-center">
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteEmployee(${user.id})" title="Delete employee" aria-label="Delete ${escapeHtml(displayName)}">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
             </tr>`;
     }
 
     function appendEmployeeRow(user) {
         document.getElementById('employeeTable').insertAdjacentHTML('beforeend', buildEmployeeRowHtml(user));
+        updateSelectionUI();
     }
 
     function removeEmployeeRow(userId) {
         const row = document.querySelector(`tr[data-user-id="${userId}"]`);
         if (row) row.remove();
+        selectedEmployeeIds.delete(userId);
     }
 
     function updateEmployeeRowEnrolled(userId, isEnrolled) {
@@ -301,7 +400,7 @@
         .catch(() => alert('Failed to send enrollment email.'));
     }
 
-    // 3. Unenroll Employee
+    // 3. Unenroll Employee (clears MFA, keeps the account)
     function unenrollEmployee(userId) {
         if (!confirm("Are you sure? Their current authenticator app will stop working.")) return;
 
@@ -312,9 +411,30 @@
             }
         })
         .then(response => {
-            if (response.ok) removeEmployeeRow(userId);
+            if (response.ok) updateEmployeeRowEnrolled(userId, false);
             else alert('Failed to unenroll employee.');
         });
+    }
+
+    // 3b. Delete Employee (permanently removes the account, enrolled or not)
+    function deleteEmployee(userId) {
+        if (!confirm("Permanently delete this employee? This cannot be undone.")) return;
+
+        fetch(`${deleteUrlBase}${userId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                removeEmployeeRow(userId);
+                updateSelectionUI();
+            } else {
+                alert('Failed to delete employee.');
+            }
+        })
+        .catch(() => alert('Failed to delete employee.'));
     }
 
     // 4. Verify Code
@@ -378,25 +498,79 @@
         .catch(() => alert('Import failed.'));
     }
 
-    // 6. Nuke ALL Employees
-    function nukeEmployees() {
-        const confirmed = confirm("This will PERMANENTLY DELETE ALL employees (superusers are not affected). This cannot be undone. Continue?");
-        if (!confirmed) return;
-
-        fetch(nukeEmployeesUrl, {
+    // 6. Bulk Actions (Enroll / Re-Enroll / Unenroll / Delete Selected)
+    function postJson(url, payload) {
+        return fetch(url, {
             method: 'POST',
-            headers: { 'X-CSRFToken': csrftoken },
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                document.getElementById('employeeTable').innerHTML = '';
-                alert(`Deleted ${data.deleted_count} employee(s).`);
-            } else {
-                alert(data.message || 'Failed to nuke employees.');
-            }
-        })
-        .catch(() => alert('Failed to nuke employees.'));
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        }).then(response => response.json());
+    }
+
+    function bulkEnrollSelected() {
+        const ids = Array.from(selectedEmployeeIds);
+        if (!ids.length) return;
+        if (!confirm(`Send enrollment emails to ${ids.length} selected employee(s)?`)) return;
+
+        postJson(bulkEnrollUrl, { user_ids: ids })
+            .then(data => {
+                (data.enrolled || []).forEach(user => updateEmployeeRowEnrolled(user.id, true));
+                let msg = `Enrolled ${data.enrolled.length} employee(s).`;
+                if (data.skipped.length) msg += ` Skipped ${data.skipped.length} already enrolled.`;
+                if (data.failed.length) msg += ` Failed to email ${data.failed.length}.`;
+                alert(msg);
+                clearSelection();
+            })
+            .catch(() => alert('Bulk enroll failed.'));
+    }
+
+    function bulkReenrollSelected() {
+        const ids = Array.from(selectedEmployeeIds);
+        if (!ids.length) return;
+        if (!confirm(`This will overwrite existing MFA setups for ${ids.length} selected employee(s). Continue?`)) return;
+
+        postJson(bulkReenrollUrl, { user_ids: ids })
+            .then(data => {
+                let msg = `Re-enrolled ${data.re_enrolled.length} employee(s).`;
+                if (data.skipped.length) msg += ` Skipped ${data.skipped.length} not yet enrolled.`;
+                if (data.failed.length) msg += ` Failed to email ${data.failed.length}.`;
+                alert(msg);
+                clearSelection();
+            })
+            .catch(() => alert('Bulk re-enroll failed.'));
+    }
+
+    function bulkUnenrollSelected() {
+        const ids = Array.from(selectedEmployeeIds);
+        if (!ids.length) return;
+        if (!confirm(`Unenroll ${ids.length} selected employee(s)? Their authenticator apps will stop working.`)) return;
+
+        postJson(bulkUnenrollUrl, { user_ids: ids })
+            .then(data => {
+                (data.unenrolled || []).forEach(id => updateEmployeeRowEnrolled(id, false));
+                let msg = `Unenrolled ${data.unenrolled.length} employee(s).`;
+                if (data.skipped.length) msg += ` Skipped ${data.skipped.length} not enrolled.`;
+                alert(msg);
+                clearSelection();
+            })
+            .catch(() => alert('Bulk unenroll failed.'));
+    }
+
+    function bulkDeleteSelected() {
+        const ids = Array.from(selectedEmployeeIds);
+        if (!ids.length) return;
+        if (!confirm(`Permanently delete ${ids.length} selected employee(s)? This cannot be undone.`)) return;
+
+        postJson(bulkDeleteUrl, { user_ids: ids })
+            .then(data => {
+                (data.deleted || []).forEach(removeEmployeeRow);
+                alert(`Deleted ${data.deleted.length} employee(s).`);
+                updateSelectionUI();
+            })
+            .catch(() => alert('Bulk delete failed.'));
     }
 
     // Search logic
@@ -409,6 +583,9 @@
             row.style.display = text.includes(filter) ? '' : 'none';
         });
     });
+
+    // Initialize selection-dependent UI (select-all state, disabled bulk buttons, export label)
+    updateSelectionUI();
 </script>
 </body>
 </html>
