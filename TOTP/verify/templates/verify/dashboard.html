@@ -225,6 +225,24 @@
     </div>
 </div>
 
+<!-- Custom centered notice modal (replaces native browser alert() popups) -->
+<div class="modal fade" id="alertModal" tabindex="-1" aria-labelledby="alertModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="alertModalTitle">Notice</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="alertModalMessage" class="mb-0"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="alertModalOkBtn" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     // Dark mode toggle (persisted across visits; theme is applied pre-paint in <head>)
@@ -310,6 +328,35 @@
             confirmModalConfirmBtn.addEventListener('click', onConfirm);
             confirmModalEl.addEventListener('hidden.bs.modal', onHidden);
             confirmModal.show();
+        });
+    }
+
+    // ---- Custom notice dialog (centered in the viewport, replaces native alert()) ----
+    const alertModalEl = document.getElementById('alertModal');
+    const alertModal = new bootstrap.Modal(alertModalEl);
+    const alertModalTitle = document.getElementById('alertModalTitle');
+    const alertModalMessage = document.getElementById('alertModalMessage');
+    const alertModalOkBtn = document.getElementById('alertModalOkBtn');
+
+    function customAlert(messageOrOptions) {
+        const { title = 'Notice', message, variant = 'primary' } =
+            typeof messageOrOptions === 'string' ? { message: messageOrOptions } : messageOrOptions;
+
+        return new Promise((resolve) => {
+            alertModalTitle.textContent = title;
+            alertModalMessage.textContent = message;
+            alertModalOkBtn.className = `btn btn-${variant}`;
+
+            let settled = false;
+            const onHidden = () => {
+                if (settled) return;
+                settled = true;
+                alertModalEl.removeEventListener('hidden.bs.modal', onHidden);
+                resolve();
+            };
+
+            alertModalEl.addEventListener('hidden.bs.modal', onHidden);
+            alertModal.show();
         });
     }
 
@@ -531,12 +578,12 @@
             return response.json();
         })
         .then(data => {
-            alert('QR Code successfully sent!');
+            customAlert({ title: 'QR Code Sent', message: 'QR Code successfully sent!', variant: 'success' });
             if (!forceRegenerate) {
                 updateEmployeeRowEnrolled(userId, true);
             }
         })
-        .catch(() => alert('Failed to send enrollment email.'));
+        .catch(() => customAlert({ title: 'Enrollment Failed', message: 'Failed to send enrollment email.', variant: 'danger' }));
     }
 
     // 3. Unenroll Employee (clears MFA, keeps the account)
@@ -557,7 +604,7 @@
         })
         .then(response => {
             if (response.ok) updateEmployeeRowEnrolled(userId, false);
-            else alert('Failed to unenroll employee.');
+            else customAlert({ title: 'Unenroll Failed', message: 'Failed to unenroll employee.', variant: 'danger' });
         });
     }
 
@@ -582,10 +629,10 @@
                 removeEmployeeRow(userId);
                 updateSelectionUI();
             } else {
-                alert('Failed to delete employee.');
+                customAlert({ title: 'Delete Failed', message: 'Failed to delete employee.', variant: 'danger' });
             }
         })
-        .catch(() => alert('Failed to delete employee.'));
+        .catch(() => customAlert({ title: 'Delete Failed', message: 'Failed to delete employee.', variant: 'danger' }));
     }
 
     // 4. Verify Code
@@ -643,7 +690,7 @@
                 addEmployeeModal.hide();
                 let msg = `Imported ${data.created.length} employee(s).`;
                 if (data.skipped.length) msg += ` Skipped ${data.skipped.length} existing email(s).`;
-                alert(msg);
+                customAlert({ title: 'Import Complete', message: msg, variant: 'success' });
             } else {
                 showAddEmployeeError(data.message || 'Import failed.');
             }
@@ -680,10 +727,10 @@
                 let msg = `Enrolled ${data.enrolled.length} employee(s).`;
                 if (data.skipped.length) msg += ` Skipped ${data.skipped.length} already enrolled.`;
                 if (data.failed.length) msg += ` Failed to email ${data.failed.length}.`;
-                alert(msg);
+                customAlert({ title: 'Enrollment Complete', message: msg, variant: 'success' });
                 clearSelection();
             })
-            .catch(() => alert('Bulk enroll failed.'));
+            .catch(() => customAlert({ title: 'Enrollment Failed', message: 'Bulk enroll failed.', variant: 'danger' }));
     }
 
     async function bulkReenrollSelected() {
@@ -702,10 +749,10 @@
                 let msg = `Re-enrolled ${data.re_enrolled.length} employee(s).`;
                 if (data.skipped.length) msg += ` Skipped ${data.skipped.length} not yet enrolled.`;
                 if (data.failed.length) msg += ` Failed to email ${data.failed.length}.`;
-                alert(msg);
+                customAlert({ title: 'Re-Enrollment Complete', message: msg, variant: 'success' });
                 clearSelection();
             })
-            .catch(() => alert('Bulk re-enroll failed.'));
+            .catch(() => customAlert({ title: 'Re-Enrollment Failed', message: 'Bulk re-enroll failed.', variant: 'danger' }));
     }
 
     async function bulkUnenrollSelected() {
@@ -724,10 +771,10 @@
                 (data.unenrolled || []).forEach(id => updateEmployeeRowEnrolled(id, false));
                 let msg = `Unenrolled ${data.unenrolled.length} employee(s).`;
                 if (data.skipped.length) msg += ` Skipped ${data.skipped.length} not enrolled.`;
-                alert(msg);
+                customAlert({ title: 'Unenrollment Complete', message: msg, variant: 'success' });
                 clearSelection();
             })
-            .catch(() => alert('Bulk unenroll failed.'));
+            .catch(() => customAlert({ title: 'Unenrollment Failed', message: 'Bulk unenroll failed.', variant: 'danger' }));
     }
 
     async function bulkDeleteSelected() {
@@ -744,10 +791,10 @@
         postJson(bulkDeleteUrl, { user_ids: ids })
             .then(data => {
                 (data.deleted || []).forEach(removeEmployeeRow);
-                alert(`Deleted ${data.deleted.length} employee(s).`);
+                customAlert({ title: 'Deletion Complete', message: `Deleted ${data.deleted.length} employee(s).`, variant: 'success' });
                 updateSelectionUI();
             })
-            .catch(() => alert('Bulk delete failed.'));
+            .catch(() => customAlert({ title: 'Deletion Failed', message: 'Bulk delete failed.', variant: 'danger' }));
     }
 
     // Search logic
