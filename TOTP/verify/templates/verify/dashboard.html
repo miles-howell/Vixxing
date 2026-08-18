@@ -45,9 +45,6 @@
             .management-panel { position: static; width: 100%; }
         }
 
-        .status-text { font-weight: bold; margin-left: 10px; }
-        .status-text:empty { display: none; }
-
         #employeeTable td, #employeeTable th { vertical-align: middle; padding: 0.9rem 1rem; }
         .select-col { width: 44px; }
         .delete-col { width: 60px; }
@@ -123,7 +120,6 @@
                             <input type="text" id="code_{{ user.id }}" class="form-control" placeholder="6-Digit Code" maxlength="6" {% if not user.employeemfa.is_enrolled %}disabled{% endif %}>
                             <button onclick="verifyCode({{ user.id }})" class="btn btn-outline-success" {% if not user.employeemfa.is_enrolled %}disabled{% endif %}>Verify</button>
                         </div>
-                        <span id="status_{{ user.id }}" class="status-text small"></span>
                     </td>
                     <td class="delete-col text-center">
                         <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteEmployee({{ user.id }})" title="Delete employee" aria-label="Delete {{ user.get_full_name|default:user.username }}">
@@ -456,7 +452,6 @@
                         <input type="text" id="code_${user.id}" class="form-control" placeholder="6-Digit Code" maxlength="6" ${user.is_enrolled ? '' : 'disabled'}>
                         <button onclick="verifyCode(${user.id})" class="btn btn-outline-success" ${user.is_enrolled ? '' : 'disabled'}>Verify</button>
                     </div>
-                    <span id="status_${user.id}" class="status-text small"></span>
                 </td>
                 <td class="delete-col text-center">
                     <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteEmployee(${user.id})" title="Delete employee" aria-label="Delete ${escapeHtml(displayName)}">
@@ -620,11 +615,8 @@
 
     // 4. Verify Code
     function verifyCode(userId) {
-        const codeInput = document.getElementById(`code_${userId}`).value;
-        const statusSpan = document.getElementById(`status_${userId}`);
-
-        statusSpan.innerText = "Checking...";
-        statusSpan.style.color = "gray";
+        const codeField = document.getElementById(`code_${userId}`);
+        const codeInput = codeField.value;
 
         fetch(`${checkUrlBase}${userId}/`, {
             method: 'POST',
@@ -637,14 +629,13 @@
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
-                statusSpan.innerText = "✓ Caller Verified";
-                statusSpan.style.color = "green";
+                customNotice('Caller Verified', { title: 'Verify Caller' });
             } else {
-                statusSpan.innerText = "✗ " + data.message;
-                statusSpan.style.color = "red";
+                customNotice(data.message, { title: 'Caller Not Verified' });
             }
-            document.getElementById(`code_${userId}`).value = '';
-        });
+            codeField.value = '';
+        })
+        .catch(() => customNotice('Failed to verify caller.', { title: 'Caller Not Verified' }));
     }
 
     // 5. Import Employees (CSV) - from the Add Employees modal
