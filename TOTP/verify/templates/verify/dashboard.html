@@ -17,125 +17,153 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         body { background-color: var(--bs-tertiary-bg); color: var(--bs-body-color); transition: background-color 0.15s ease, color 0.15s ease; }
-        .dashboard-container { max-width: 1320px; margin: 40px auto; background: var(--bs-body-bg); padding: 40px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+
+        .dashboard-layout {
+            display: flex;
+            align-items: flex-start;
+            gap: 24px;
+            max-width: 1400px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        .panel {
+            background: var(--bs-body-bg);
+            padding: 32px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .employee-panel { flex: 7 1 0; min-width: 0; }
+        .management-panel {
+            flex: 3 1 0;
+            min-width: 280px;
+            position: sticky;
+            top: 24px;
+        }
+        @media (max-width: 900px) {
+            .dashboard-layout { flex-direction: column; }
+            .management-panel { position: static; width: 100%; }
+        }
+
         .status-text { font-weight: bold; margin-left: 10px; }
-        .bulk-toggle .chevron { display: inline-block; transition: transform 0.2s ease; }
-        .bulk-toggle[aria-expanded="true"] .chevron { transform: rotate(180deg); }
-        #employeeTable td, #employeeTable th { vertical-align: middle; }
+        .status-text:empty { display: none; }
+
+        #employeeTable td, #employeeTable th { vertical-align: middle; padding: 0.9rem 1rem; }
         .select-col { width: 44px; }
         .delete-col { width: 60px; }
         .mfa-status-cell { width: 90px; }
         .mfa-status-cell i { font-size: 1.4rem; }
+        .management-cell { min-width: 230px; }
+        .management-cell .btn { white-space: nowrap; }
+
+        .mgmt-action-btn { text-align: left; }
     </style>
 </head>
 <body>
 
 {% csrf_token %}
 
-<div class="dashboard-container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="mb-0">Employee Caller Verification</h2>
-        <button type="button" id="darkModeToggle" class="btn btn-outline-secondary btn-sm" onclick="toggleDarkMode()" title="Dark Mode" aria-label="Switch to dark mode">
-            <i class="bi bi-moon-stars-fill" id="darkModeIcon"></i>
-        </button>
-    </div>
+<div class="dashboard-layout">
+    <!-- Employee panel: title, search, add employees, employee list -->
+    <div class="panel employee-panel">
+        <h2 class="mb-4">Employee Caller Verification</h2>
 
-    <!-- Bulk CSV Export / Bulk Actions -->
-    <div class="card bg-body-tertiary mb-4 border-0">
-        <button type="button" class="btn w-100 text-start d-flex justify-content-between align-items-center bulk-toggle p-3" data-bs-toggle="collapse" data-bs-target="#bulkManagementBody" aria-expanded="false" aria-controls="bulkManagementBody">
-            <span class="fw-semibold">Bulk Employee Management</span>
-            <span class="chevron">&#9662;</span>
-        </button>
-        <div class="collapse" id="bulkManagementBody">
-            <div class="card-body pt-0">
-                <div class="d-flex flex-wrap align-items-center gap-2">
-                    <a href="{% url 'verify:export_employees' %}" id="exportEmployeesBtn" class="btn btn-outline-secondary" title="Export All Employees (CSV)" aria-label="Export All Employees (CSV)">
-                        <i class="bi bi-download"></i>
-                    </a>
-                    <div class="vr mx-1 d-none d-sm-block"></div>
-                    <span class="fw-semibold text-nowrap">Bulk Actions:</span>
-                    <button type="button" class="btn btn-outline-primary bulk-action-btn" onclick="bulkEnrollSelected()" disabled>Enroll Selected</button>
-                    <button type="button" class="btn btn-outline-warning bulk-action-btn" onclick="bulkReenrollSelected()" disabled>Re-Enroll Selected</button>
-                    <button type="button" class="btn btn-outline-secondary bulk-action-btn" onclick="bulkUnenrollSelected()" disabled>Unenroll Selected</button>
-                    <button type="button" class="btn btn-outline-danger bulk-action-btn" onclick="bulkDeleteSelected()" disabled>Delete Selected</button>
-                    <span id="selectedCount" class="text-muted small ms-2"></span>
-                </div>
+        <div class="d-flex gap-2 mb-4">
+            <input type="text" id="searchInput" class="form-control" placeholder="Search employees by name or email...">
+            <button type="button" class="btn btn-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#addEmployeeModal" title="Add Employees" aria-label="Add Employees">
+                <i class="bi bi-person-plus-fill"></i>
+            </button>
+        </div>
 
-                <small class="text-muted d-block mt-3">
-                    Bulk actions and CSV export apply to the employees checked in the table below &mdash; if none are checked, export covers everyone.
-                    Add new employees, individually or via CSV, with the Add Employees button next to the search bar.
-                </small>
-            </div>
+        <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th class="select-col">
+                        <input type="checkbox" class="form-check-input" id="selectAllEmployees" onchange="toggleSelectAll(this)" aria-label="Select all employees">
+                    </th>
+                    <th>Employee</th>
+                    <th class="mfa-status-cell text-center">MFA Status</th>
+                    <th>Management</th>
+                    <th>Verify Caller</th>
+                    <th class="delete-col text-center">Delete</th>
+                </tr>
+            </thead>
+            <tbody id="employeeTable">
+                {% for user in users %}
+                <tr data-user-id="{{ user.id }}">
+                    <td class="select-col">
+                        <input type="checkbox" class="form-check-input employee-select-checkbox" data-user-id="{{ user.id }}" onchange="toggleEmployeeSelection({{ user.id }}, this)" aria-label="Select {{ user.get_full_name|default:user.username }}">
+                    </td>
+                    <td>
+                        <strong>{{ user.get_full_name|default:user.username }}</strong><br>
+                        <small class="text-muted">{{ user.email }}</small>
+                    </td>
+                    <td class="mfa-status-cell text-center">
+                        {% if user.employeemfa.is_enrolled %}
+                            <i class="bi bi-check-circle-fill text-success" role="img" title="Enrolled" aria-label="Enrolled"></i>
+                        {% else %}
+                            <i class="bi bi-exclamation-triangle-fill text-warning" role="img" title="Not Enrolled" aria-label="Not Enrolled"></i>
+                        {% endif %}
+                    </td>
+                    <td class="management-cell">
+                        {% if user.employeemfa.is_enrolled %}
+                            <!-- Regenerates the secret & sends new email -->
+                            <button onclick="triggerEnrollment({{ user.id }}, true)" class="btn btn-sm btn-outline-warning">Regenerate QR</button>
+                            <!-- Clears enrollment, keeps the account -->
+                            <button onclick="unenrollEmployee({{ user.id }})" class="btn btn-sm btn-outline-danger">Unenroll</button>
+                        {% else %}
+                            <!-- Standard initial enrollment -->
+                            <button onclick="triggerEnrollment({{ user.id }}, false)" class="btn btn-sm btn-primary">Email QR Code</button>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <!-- Verification form (only works if enrolled) -->
+                        <div class="input-group input-group-sm" style="max-width: 250px;">
+                            <input type="text" id="code_{{ user.id }}" class="form-control" placeholder="6-Digit Code" maxlength="6" {% if not user.employeemfa.is_enrolled %}disabled{% endif %}>
+                            <button onclick="verifyCode({{ user.id }})" class="btn btn-outline-success" {% if not user.employeemfa.is_enrolled %}disabled{% endif %}>Verify</button>
+                        </div>
+                        <span id="status_{{ user.id }}" class="status-text small"></span>
+                    </td>
+                    <td class="delete-col text-center">
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteEmployee({{ user.id }})" title="Delete employee" aria-label="Delete {{ user.get_full_name|default:user.username }}">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
         </div>
     </div>
 
-    <!-- Real-time Search + Add Employees -->
-    <div class="d-flex gap-2 mb-4">
-        <input type="text" id="searchInput" class="form-control" placeholder="Search employees by name or email...">
-        <button type="button" class="btn btn-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#addEmployeeModal" title="Add Employees" aria-label="Add Employees">
-            <i class="bi bi-person-plus-fill"></i>
-        </button>
-    </div>
+    <!-- Management panel: persistent tool panel, stays in view while the employee list scrolls -->
+    <div class="panel management-panel">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h5 class="mb-0 fw-semibold">Management</h5>
+            <button type="button" id="darkModeToggle" class="btn btn-outline-secondary btn-sm" onclick="toggleDarkMode()" title="Dark Mode" aria-label="Switch to dark mode">
+                <i class="bi bi-moon-stars-fill" id="darkModeIcon"></i>
+            </button>
+        </div>
 
-    <div class="table-responsive">
-    <table class="table table-hover align-middle">
-        <thead>
-            <tr>
-                <th class="select-col">
-                    <input type="checkbox" class="form-check-input" id="selectAllEmployees" onchange="toggleSelectAll(this)" aria-label="Select all employees">
-                </th>
-                <th>Employee</th>
-                <th class="mfa-status-cell text-center">MFA Status</th>
-                <th>Management</th>
-                <th>Verify Caller</th>
-                <th class="delete-col text-center">Delete</th>
-            </tr>
-        </thead>
-        <tbody id="employeeTable">
-            {% for user in users %}
-            <tr data-user-id="{{ user.id }}">
-                <td class="select-col">
-                    <input type="checkbox" class="form-check-input employee-select-checkbox" data-user-id="{{ user.id }}" onchange="toggleEmployeeSelection({{ user.id }}, this)" aria-label="Select {{ user.get_full_name|default:user.username }}">
-                </td>
-                <td>
-                    <strong>{{ user.get_full_name|default:user.username }}</strong><br>
-                    <small class="text-muted">{{ user.email }}</small>
-                </td>
-                <td class="mfa-status-cell text-center">
-                    {% if user.employeemfa.is_enrolled %}
-                        <i class="bi bi-check-circle-fill text-success" role="img" title="Enrolled" aria-label="Enrolled"></i>
-                    {% else %}
-                        <i class="bi bi-exclamation-triangle-fill text-warning" role="img" title="Not Enrolled" aria-label="Not Enrolled"></i>
-                    {% endif %}
-                </td>
-                <td class="management-cell">
-                    {% if user.employeemfa.is_enrolled %}
-                        <!-- Regenerates the secret & sends new email -->
-                        <button onclick="triggerEnrollment({{ user.id }}, true)" class="btn btn-sm btn-outline-warning">Regenerate QR</button>
-                        <!-- Clears enrollment, keeps the account -->
-                        <button onclick="unenrollEmployee({{ user.id }})" class="btn btn-sm btn-outline-danger">Unenroll</button>
-                    {% else %}
-                        <!-- Standard initial enrollment -->
-                        <button onclick="triggerEnrollment({{ user.id }}, false)" class="btn btn-sm btn-primary">Email QR Code</button>
-                    {% endif %}
-                </td>
-                <td>
-                    <!-- Verification form (only works if enrolled) -->
-                    <div class="input-group input-group-sm" style="max-width: 250px;">
-                        <input type="text" id="code_{{ user.id }}" class="form-control" placeholder="6-Digit Code" maxlength="6" {% if not user.employeemfa.is_enrolled %}disabled{% endif %}>
-                        <button onclick="verifyCode({{ user.id }})" class="btn btn-outline-success" {% if not user.employeemfa.is_enrolled %}disabled{% endif %}>Verify</button>
-                    </div>
-                    <span id="status_{{ user.id }}" class="status-text small"></span>
-                </td>
-                <td class="delete-col text-center">
-                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteEmployee({{ user.id }})" title="Delete employee" aria-label="Delete {{ user.get_full_name|default:user.username }}">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+        <a href="{% url 'verify:export_employees' %}" id="exportEmployeesBtn" class="btn btn-outline-secondary w-100 mgmt-action-btn mb-3" title="Export All Employees (CSV)">
+            <i class="bi bi-download"></i> <span id="exportEmployeesLabel">Export All Employees (CSV)</span>
+        </a>
+
+        <hr>
+
+        <div class="fw-semibold mb-2">Bulk Actions</div>
+        <div class="d-grid gap-2">
+            <button type="button" class="btn btn-outline-primary mgmt-action-btn bulk-action-btn" onclick="bulkEnrollSelected()" disabled>Enroll Selected</button>
+            <button type="button" class="btn btn-outline-warning mgmt-action-btn bulk-action-btn" onclick="bulkReenrollSelected()" disabled>Re-Enroll Selected</button>
+            <button type="button" class="btn btn-outline-secondary mgmt-action-btn bulk-action-btn" onclick="bulkUnenrollSelected()" disabled>Unenroll Selected</button>
+            <button type="button" class="btn btn-outline-danger mgmt-action-btn bulk-action-btn" onclick="bulkDeleteSelected()" disabled>Delete Selected</button>
+        </div>
+        <div id="selectedCount" class="text-muted small mt-2"></div>
+
+        <small class="text-muted d-block mt-3">
+            Bulk actions and CSV export apply to the employees checked in the list &mdash; if none are checked, export covers everyone.
+            Add new employees, individually or via CSV, with the Add Employees button next to the search bar.
+        </small>
     </div>
 </div>
 
@@ -173,6 +201,25 @@
                     Import/export only covers names and email addresses &mdash; MFA secrets are never included.
                     Imported employees are added as "Not Enrolled"; enroll them individually or with Enroll Selected on the dashboard.
                 </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Custom centered confirmation modal (replaces native browser confirm() popups) -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmModalTitle">Please Confirm</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmModalMessage" class="mb-0"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="confirmModalConfirmBtn" class="btn btn-primary">Confirm</button>
             </div>
         </div>
     </div>
@@ -234,6 +281,38 @@
     const bulkUnenrollUrl = "{% url 'verify:bulk_unenroll' %}";
     const bulkDeleteUrl = "{% url 'verify:bulk_delete' %}";
 
+    // ---- Custom confirm dialog (centered in the viewport, replaces native confirm()) ----
+    const confirmModalEl = document.getElementById('confirmModal');
+    const confirmModal = new bootstrap.Modal(confirmModalEl);
+    const confirmModalTitle = document.getElementById('confirmModalTitle');
+    const confirmModalMessage = document.getElementById('confirmModalMessage');
+    const confirmModalConfirmBtn = document.getElementById('confirmModalConfirmBtn');
+
+    function customConfirm({ title = 'Please Confirm', message, confirmText = 'Confirm', variant = 'primary' }) {
+        return new Promise((resolve) => {
+            confirmModalTitle.textContent = title;
+            confirmModalMessage.textContent = message;
+            confirmModalConfirmBtn.textContent = confirmText;
+            confirmModalConfirmBtn.className = `btn btn-${variant}`;
+
+            let settled = false;
+            const settle = (result) => {
+                if (settled) return;
+                settled = true;
+                confirmModalConfirmBtn.removeEventListener('click', onConfirm);
+                confirmModalEl.removeEventListener('hidden.bs.modal', onHidden);
+                resolve(result);
+            };
+            const onConfirm = () => { settle(true); confirmModal.hide(); };
+            // Fires on Cancel, the X button, backdrop click, and Escape - all "no".
+            const onHidden = () => settle(false);
+
+            confirmModalConfirmBtn.addEventListener('click', onConfirm);
+            confirmModalEl.addEventListener('hidden.bs.modal', onHidden);
+            confirmModal.show();
+        });
+    }
+
     // ---- Add Employees modal ----
     const addEmployeeModalEl = document.getElementById('addEmployeeModal');
     const addEmployeeModal = new bootstrap.Modal(addEmployeeModalEl);
@@ -282,7 +361,7 @@
             ? `${exportEmployeesBaseUrl}?ids=${Array.from(selectedEmployeeIds).join(',')}`
             : exportEmployeesBaseUrl;
         exportBtn.title = exportLabel;
-        exportBtn.setAttribute('aria-label', exportLabel);
+        document.getElementById('exportEmployeesLabel').textContent = exportLabel;
     }
 
     function toggleEmployeeSelection(userId, checkbox) {
@@ -428,12 +507,16 @@
     }
 
     // 2. Trigger Enrollment / Regenerate QR
-    function triggerEnrollment(userId, forceRegenerate = false) {
-        let confirmAction = true;
+    async function triggerEnrollment(userId, forceRegenerate = false) {
         if (forceRegenerate) {
-            confirmAction = confirm("This will overwrite their existing MFA setup. Are you sure?");
+            const confirmed = await customConfirm({
+                title: 'Regenerate MFA Setup',
+                message: 'This will overwrite their existing MFA setup. Are you sure?',
+                confirmText: 'Regenerate',
+                variant: 'warning',
+            });
+            if (!confirmed) return;
         }
-        if (!confirmAction) return;
 
         fetch(`${enrollUrlBase}${userId}/`, {
             method: 'POST',
@@ -457,8 +540,14 @@
     }
 
     // 3. Unenroll Employee (clears MFA, keeps the account)
-    function unenrollEmployee(userId) {
-        if (!confirm("Are you sure? Their current authenticator app will stop working.")) return;
+    async function unenrollEmployee(userId) {
+        const confirmed = await customConfirm({
+            title: 'Unenroll Employee',
+            message: 'Are you sure? Their current authenticator app will stop working.',
+            confirmText: 'Unenroll',
+            variant: 'danger',
+        });
+        if (!confirmed) return;
 
         fetch(`${unenrollUrlBase}${userId}/`, {
             method: 'POST',
@@ -473,8 +562,14 @@
     }
 
     // 3b. Delete Employee (permanently removes the account, enrolled or not)
-    function deleteEmployee(userId) {
-        if (!confirm("Permanently delete this employee? This cannot be undone.")) return;
+    async function deleteEmployee(userId) {
+        const confirmed = await customConfirm({
+            title: 'Delete Employee',
+            message: 'Permanently delete this employee? This cannot be undone.',
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (!confirmed) return;
 
         fetch(`${deleteUrlBase}${userId}/`, {
             method: 'POST',
@@ -568,10 +663,16 @@
         }).then(response => response.json());
     }
 
-    function bulkEnrollSelected() {
+    async function bulkEnrollSelected() {
         const ids = Array.from(selectedEmployeeIds);
         if (!ids.length) return;
-        if (!confirm(`Send enrollment emails to ${ids.length} selected employee(s)?`)) return;
+        const confirmed = await customConfirm({
+            title: 'Enroll Selected Employees',
+            message: `Send enrollment emails to ${ids.length} selected employee(s)?`,
+            confirmText: 'Send Emails',
+            variant: 'primary',
+        });
+        if (!confirmed) return;
 
         postJson(bulkEnrollUrl, { user_ids: ids })
             .then(data => {
@@ -585,10 +686,16 @@
             .catch(() => alert('Bulk enroll failed.'));
     }
 
-    function bulkReenrollSelected() {
+    async function bulkReenrollSelected() {
         const ids = Array.from(selectedEmployeeIds);
         if (!ids.length) return;
-        if (!confirm(`This will overwrite existing MFA setups for ${ids.length} selected employee(s). Continue?`)) return;
+        const confirmed = await customConfirm({
+            title: 'Re-Enroll Selected Employees',
+            message: `This will overwrite existing MFA setups for ${ids.length} selected employee(s). Continue?`,
+            confirmText: 'Regenerate',
+            variant: 'warning',
+        });
+        if (!confirmed) return;
 
         postJson(bulkReenrollUrl, { user_ids: ids })
             .then(data => {
@@ -601,10 +708,16 @@
             .catch(() => alert('Bulk re-enroll failed.'));
     }
 
-    function bulkUnenrollSelected() {
+    async function bulkUnenrollSelected() {
         const ids = Array.from(selectedEmployeeIds);
         if (!ids.length) return;
-        if (!confirm(`Unenroll ${ids.length} selected employee(s)? Their authenticator apps will stop working.`)) return;
+        const confirmed = await customConfirm({
+            title: 'Unenroll Selected Employees',
+            message: `Unenroll ${ids.length} selected employee(s)? Their authenticator apps will stop working.`,
+            confirmText: 'Unenroll',
+            variant: 'danger',
+        });
+        if (!confirmed) return;
 
         postJson(bulkUnenrollUrl, { user_ids: ids })
             .then(data => {
@@ -617,10 +730,16 @@
             .catch(() => alert('Bulk unenroll failed.'));
     }
 
-    function bulkDeleteSelected() {
+    async function bulkDeleteSelected() {
         const ids = Array.from(selectedEmployeeIds);
         if (!ids.length) return;
-        if (!confirm(`Permanently delete ${ids.length} selected employee(s)? This cannot be undone.`)) return;
+        const confirmed = await customConfirm({
+            title: 'Delete Selected Employees',
+            message: `Permanently delete ${ids.length} selected employee(s)? This cannot be undone.`,
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (!confirmed) return;
 
         postJson(bulkDeleteUrl, { user_ids: ids })
             .then(data => {
