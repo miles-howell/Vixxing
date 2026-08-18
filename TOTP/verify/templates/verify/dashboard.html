@@ -21,10 +21,11 @@
         .status-text { font-weight: bold; margin-left: 10px; }
         .bulk-toggle .chevron { display: inline-block; transition: transform 0.2s ease; }
         .bulk-toggle[aria-expanded="true"] .chevron { transform: rotate(180deg); }
-        .bulk-actions-group { padding-top: 14px; margin-top: 14px; border-top: 1px solid var(--bs-border-color); }
         #employeeTable td, #employeeTable th { vertical-align: middle; }
         .select-col { width: 44px; }
         .delete-col { width: 60px; }
+        .mfa-status-cell { width: 90px; }
+        .mfa-status-cell i { font-size: 1.4rem; }
     </style>
 </head>
 <body>
@@ -34,22 +35,12 @@
 <div class="dashboard-container">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="mb-0">Employee Caller Verification</h2>
-        <button type="button" id="darkModeToggle" class="btn btn-outline-secondary btn-sm" onclick="toggleDarkMode()">Dark Mode</button>
+        <button type="button" id="darkModeToggle" class="btn btn-outline-secondary btn-sm" onclick="toggleDarkMode()" title="Dark Mode" aria-label="Switch to dark mode">
+            <i class="bi bi-moon-stars-fill" id="darkModeIcon"></i>
+        </button>
     </div>
 
-    <!-- Add Employee Form -->
-    <div class="card bg-body-tertiary mb-4 border-0">
-        <div class="card-body">
-            <form id="addEmployeeForm" class="d-flex gap-2">
-                <input type="text" id="newEmpFirstName" class="form-control" placeholder="First Name">
-                <input type="text" id="newEmpLastName" class="form-control" placeholder="Last Name">
-                <input type="email" id="newEmpEmail" class="form-control" placeholder="Email Address (Required)">
-                <button type="submit" class="btn btn-dark text-nowrap">Add Employee</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Bulk CSV Import / Export / Bulk Actions -->
+    <!-- Bulk CSV Export / Bulk Actions -->
     <div class="card bg-body-tertiary mb-4 border-0">
         <button type="button" class="btn w-100 text-start d-flex justify-content-between align-items-center bulk-toggle p-3" data-bs-toggle="collapse" data-bs-target="#bulkManagementBody" aria-expanded="false" aria-controls="bulkManagementBody">
             <span class="fw-semibold">Bulk Employee Management</span>
@@ -58,33 +49,33 @@
         <div class="collapse" id="bulkManagementBody">
             <div class="card-body pt-0">
                 <div class="d-flex flex-wrap align-items-center gap-2">
-                    <a href="{% url 'verify:export_employees' %}" id="exportEmployeesBtn" class="btn btn-outline-secondary">Export All Employees (CSV)</a>
-                    <input type="file" id="csvImportFile" accept=".csv" class="form-control" style="max-width: 280px;">
-                    <button type="button" onclick="importEmployeesCsv()" class="btn btn-outline-primary">Import Employees (CSV)</button>
-                </div>
-
-                <div class="bulk-actions-group">
-                    <div class="d-flex flex-wrap align-items-center gap-2">
-                        <span class="fw-semibold text-nowrap me-1">Bulk Actions:</span>
-                        <button type="button" class="btn btn-outline-primary bulk-action-btn" onclick="bulkEnrollSelected()" disabled>Enroll Selected</button>
-                        <button type="button" class="btn btn-outline-warning bulk-action-btn" onclick="bulkReenrollSelected()" disabled>Re-Enroll Selected</button>
-                        <button type="button" class="btn btn-outline-secondary bulk-action-btn" onclick="bulkUnenrollSelected()" disabled>Unenroll Selected</button>
-                        <button type="button" class="btn btn-outline-danger bulk-action-btn" onclick="bulkDeleteSelected()" disabled>Delete Selected</button>
-                        <span id="selectedCount" class="text-muted small ms-2"></span>
-                    </div>
+                    <a href="{% url 'verify:export_employees' %}" id="exportEmployeesBtn" class="btn btn-outline-secondary" title="Export All Employees (CSV)" aria-label="Export All Employees (CSV)">
+                        <i class="bi bi-download"></i>
+                    </a>
+                    <div class="vr mx-1 d-none d-sm-block"></div>
+                    <span class="fw-semibold text-nowrap">Bulk Actions:</span>
+                    <button type="button" class="btn btn-outline-primary bulk-action-btn" onclick="bulkEnrollSelected()" disabled>Enroll Selected</button>
+                    <button type="button" class="btn btn-outline-warning bulk-action-btn" onclick="bulkReenrollSelected()" disabled>Re-Enroll Selected</button>
+                    <button type="button" class="btn btn-outline-secondary bulk-action-btn" onclick="bulkUnenrollSelected()" disabled>Unenroll Selected</button>
+                    <button type="button" class="btn btn-outline-danger bulk-action-btn" onclick="bulkDeleteSelected()" disabled>Delete Selected</button>
+                    <span id="selectedCount" class="text-muted small ms-2"></span>
                 </div>
 
                 <small class="text-muted d-block mt-3">
-                    Import/export only covers names and email addresses &mdash; MFA secrets are never included.
-                    Imported employees are added as "Not Enrolled"; enroll each one individually or with Enroll Selected.
                     Bulk actions and CSV export apply to the employees checked in the table below &mdash; if none are checked, export covers everyone.
+                    Add new employees, individually or via CSV, with the Add Employees button next to the search bar.
                 </small>
             </div>
         </div>
     </div>
 
-    <!-- Real-time Search Input -->
-    <input type="text" id="searchInput" class="form-control mb-4" placeholder="Search employees by name or email...">
+    <!-- Real-time Search + Add Employees -->
+    <div class="d-flex gap-2 mb-4">
+        <input type="text" id="searchInput" class="form-control" placeholder="Search employees by name or email...">
+        <button type="button" class="btn btn-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#addEmployeeModal" title="Add Employees" aria-label="Add Employees">
+            <i class="bi bi-person-plus-fill"></i>
+        </button>
+    </div>
 
     <div class="table-responsive">
     <table class="table table-hover align-middle">
@@ -94,7 +85,7 @@
                     <input type="checkbox" class="form-check-input" id="selectAllEmployees" onchange="toggleSelectAll(this)" aria-label="Select all employees">
                 </th>
                 <th>Employee</th>
-                <th>MFA Status</th>
+                <th class="mfa-status-cell text-center">MFA Status</th>
                 <th>Management</th>
                 <th>Verify Caller</th>
                 <th class="delete-col text-center">Delete</th>
@@ -110,11 +101,11 @@
                     <strong>{{ user.get_full_name|default:user.username }}</strong><br>
                     <small class="text-muted">{{ user.email }}</small>
                 </td>
-                <td class="mfa-status-cell">
+                <td class="mfa-status-cell text-center">
                     {% if user.employeemfa.is_enrolled %}
-                        <span class="badge bg-success">Enrolled</span>
+                        <i class="bi bi-check-circle-fill text-success" role="img" title="Enrolled" aria-label="Enrolled"></i>
                     {% else %}
-                        <span class="badge bg-warning text-dark">Not Enrolled</span>
+                        <i class="bi bi-exclamation-triangle-fill text-warning" role="img" title="Not Enrolled" aria-label="Not Enrolled"></i>
                     {% endif %}
                 </td>
                 <td class="management-cell">
@@ -148,15 +139,59 @@
     </div>
 </div>
 
+<!-- Add Employees Modal (individual + CSV import) -->
+<div class="modal fade" id="addEmployeeModal" tabindex="-1" aria-labelledby="addEmployeeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addEmployeeModalLabel">Add Employees</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="addEmployeeError" class="alert alert-danger d-none" role="alert"></div>
+
+                <h6 class="fw-semibold">Add One Employee</h6>
+                <form id="addEmployeeForm" class="mb-4">
+                    <div class="d-flex flex-wrap gap-2">
+                        <input type="text" id="newEmpFirstName" class="form-control" placeholder="First Name" style="flex: 1 1 150px;">
+                        <input type="text" id="newEmpLastName" class="form-control" placeholder="Last Name" style="flex: 1 1 150px;">
+                        <input type="email" id="newEmpEmail" class="form-control" placeholder="Email Address (Required)" style="flex: 2 1 220px;">
+                        <button type="submit" class="btn btn-primary text-nowrap">Add Employee</button>
+                    </div>
+                </form>
+
+                <hr>
+
+                <h6 class="fw-semibold">Import from CSV</h6>
+                <div class="d-flex flex-wrap gap-2">
+                    <input type="file" id="csvImportFile" accept=".csv" class="form-control" style="flex: 1 1 220px;">
+                    <button type="button" onclick="importEmployeesCsv()" class="btn btn-outline-primary text-nowrap">
+                        <i class="bi bi-upload"></i> Import CSV
+                    </button>
+                </div>
+                <small class="text-muted d-block mt-2">
+                    Import/export only covers names and email addresses &mdash; MFA secrets are never included.
+                    Imported employees are added as "Not Enrolled"; enroll them individually or with Enroll Selected on the dashboard.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     // Dark mode toggle (persisted across visits; theme is applied pre-paint in <head>)
     const THEME_KEY = 'helpdeskDashboardTheme';
     const darkModeToggle = document.getElementById('darkModeToggle');
+    const darkModeIcon = document.getElementById('darkModeIcon');
 
     function applyTheme(theme) {
         document.documentElement.setAttribute('data-bs-theme', theme);
-        darkModeToggle.textContent = theme === 'dark' ? 'Light Mode' : 'Dark Mode';
+        const isDark = theme === 'dark';
+        darkModeIcon.className = isDark ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
+        const label = isDark ? 'Switch to light mode' : 'Switch to dark mode';
+        darkModeToggle.title = label;
+        darkModeToggle.setAttribute('aria-label', label);
     }
 
     function toggleDarkMode() {
@@ -199,6 +234,24 @@
     const bulkUnenrollUrl = "{% url 'verify:bulk_unenroll' %}";
     const bulkDeleteUrl = "{% url 'verify:bulk_delete' %}";
 
+    // ---- Add Employees modal ----
+    const addEmployeeModalEl = document.getElementById('addEmployeeModal');
+    const addEmployeeModal = new bootstrap.Modal(addEmployeeModalEl);
+    const addEmployeeError = document.getElementById('addEmployeeError');
+
+    function showAddEmployeeError(message) {
+        addEmployeeError.textContent = message;
+        addEmployeeError.classList.remove('d-none');
+    }
+
+    function hideAddEmployeeError() {
+        addEmployeeError.textContent = '';
+        addEmployeeError.classList.add('d-none');
+    }
+
+    // Clear any stale error whenever the modal is (re)opened.
+    addEmployeeModalEl.addEventListener('show.bs.modal', hideAddEmployeeError);
+
     // ---- Selection tracking (for bulk actions & selection-aware export) ----
     const selectedEmployeeIds = new Set();
 
@@ -222,13 +275,14 @@
         });
 
         const exportBtn = document.getElementById('exportEmployeesBtn');
-        if (selectedCount > 0) {
-            exportBtn.href = `${exportEmployeesBaseUrl}?ids=${Array.from(selectedEmployeeIds).join(',')}`;
-            exportBtn.textContent = `Export Selected (${selectedCount}) (CSV)`;
-        } else {
-            exportBtn.href = exportEmployeesBaseUrl;
-            exportBtn.textContent = 'Export All Employees (CSV)';
-        }
+        const exportLabel = selectedCount > 0
+            ? `Export Selected (${selectedCount}) (CSV)`
+            : 'Export All Employees (CSV)';
+        exportBtn.href = selectedCount > 0
+            ? `${exportEmployeesBaseUrl}?ids=${Array.from(selectedEmployeeIds).join(',')}`
+            : exportEmployeesBaseUrl;
+        exportBtn.title = exportLabel;
+        exportBtn.setAttribute('aria-label', exportLabel);
     }
 
     function toggleEmployeeSelection(userId, checkbox) {
@@ -261,10 +315,10 @@
         return div.innerHTML;
     }
 
-    function statusBadgeHtml(isEnrolled) {
+    function statusIconHtml(isEnrolled) {
         return isEnrolled
-            ? '<span class="badge bg-success">Enrolled</span>'
-            : '<span class="badge bg-warning text-dark">Not Enrolled</span>';
+            ? '<i class="bi bi-check-circle-fill text-success" role="img" title="Enrolled" aria-label="Enrolled"></i>'
+            : '<i class="bi bi-exclamation-triangle-fill text-warning" role="img" title="Not Enrolled" aria-label="Not Enrolled"></i>';
     }
 
     function managementButtonsHtml(userId, isEnrolled) {
@@ -285,7 +339,7 @@
                     <strong>${escapeHtml(displayName)}</strong><br>
                     <small class="text-muted">${escapeHtml(user.email)}</small>
                 </td>
-                <td class="mfa-status-cell">${statusBadgeHtml(user.is_enrolled)}</td>
+                <td class="mfa-status-cell text-center">${statusIconHtml(user.is_enrolled)}</td>
                 <td class="management-cell">${managementButtonsHtml(user.id, user.is_enrolled)}</td>
                 <td>
                     <div class="input-group input-group-sm" style="max-width: 250px;">
@@ -316,7 +370,7 @@
     function updateEmployeeRowEnrolled(userId, isEnrolled) {
         const row = document.querySelector(`tr[data-user-id="${userId}"]`);
         if (!row) return;
-        row.querySelector('.mfa-status-cell').innerHTML = statusBadgeHtml(isEnrolled);
+        row.querySelector('.mfa-status-cell').innerHTML = statusIconHtml(isEnrolled);
         row.querySelector('.management-cell').innerHTML = managementButtonsHtml(userId, isEnrolled);
         const codeInput = row.querySelector(`#code_${userId}`);
         const verifyBtn = row.querySelector(`button[onclick="verifyCode(${userId})"]`);
@@ -324,7 +378,7 @@
         if (verifyBtn) verifyBtn.disabled = !isEnrolled;
     }
 
-    // 1. Add New Employee
+    // 1. Add New Employee (individually, from the Add Employees modal)
     document.getElementById('addEmployeeForm').addEventListener('submit', function(e) {
         e.preventDefault();
         addEmployee();
@@ -340,7 +394,7 @@
         const email = emailInput.value.trim();
 
         if (!email) {
-            alert("Email is required.");
+            showAddEmployeeError('Email is required.');
             return;
         }
 
@@ -360,15 +414,17 @@
         .then(data => {
             if (data.status === 'success') {
                 appendEmployeeRow(data.user);
+                hideAddEmployeeError();
+                // Stays open per spec - only manual close (X / backdrop) dismisses it.
                 firstNameInput.value = '';
                 lastNameInput.value = '';
                 emailInput.value = '';
                 firstNameInput.focus();
             } else {
-                alert(data.message || 'Failed to add employee.');
+                showAddEmployeeError(data.message || 'Failed to add employee.');
             }
         })
-        .catch(() => alert('Failed to add employee.'));
+        .catch(() => showAddEmployeeError('Failed to add employee.'));
     }
 
     // 2. Trigger Enrollment / Regenerate QR
@@ -466,12 +522,12 @@
         });
     }
 
-    // 5. Import Employees (CSV)
+    // 5. Import Employees (CSV) - from the Add Employees modal
     function importEmployeesCsv() {
         const fileInput = document.getElementById('csvImportFile');
         const file = fileInput.files[0];
         if (!file) {
-            alert("Choose a CSV file first.");
+            showAddEmployeeError('Choose a CSV file first.');
             return;
         }
 
@@ -487,15 +543,17 @@
         .then(data => {
             if (data.status === 'success') {
                 data.created.forEach(appendEmployeeRow);
+                fileInput.value = '';
+                hideAddEmployeeError();
+                addEmployeeModal.hide();
                 let msg = `Imported ${data.created.length} employee(s).`;
                 if (data.skipped.length) msg += ` Skipped ${data.skipped.length} existing email(s).`;
                 alert(msg);
-                fileInput.value = '';
             } else {
-                alert(data.message || 'Import failed.');
+                showAddEmployeeError(data.message || 'Import failed.');
             }
         })
-        .catch(() => alert('Import failed.'));
+        .catch(() => showAddEmployeeError('Import failed.'));
     }
 
     // 6. Bulk Actions (Enroll / Re-Enroll / Unenroll / Delete Selected)
