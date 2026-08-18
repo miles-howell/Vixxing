@@ -92,10 +92,31 @@ types it in, and clicks **Verify**. The result is immediate and unambiguous.
 
 ### Management
 
-- **Regenerate QR** — issues a new secret and re-emails it (invalidates the old
-  device). Use this when someone changes phones or you suspect a secret is
-  compromised.
-- **Unenroll** — deletes the employee record and their secret entirely.
+Each employee row has the following actions, and the dashboard also supports
+searching and selecting multiple employees at once for bulk versions of the
+same operations:
+
+- **Regenerate QR** — issues a new secret and re-emails it (invalidates the
+  old device). Use this when someone changes phones or you suspect a secret
+  is compromised.
+- **Unenroll** — clears the stored secret and marks the employee not
+  enrolled, but keeps their account. They can be re-enrolled later without
+  re-adding them.
+- **Delete** — permanently removes the employee's account and secret
+  entirely, enrolled or not.
+- **Add Employees** — one at a time via a form, or in bulk by uploading a
+  CSV (requires an `email` column; `first_name`/`last_name` are optional).
+  Import only creates accounts — it never enrolls anyone or sends mail.
+- **Export (CSV)** — downloads employee name/email/username/enrollment
+  status for all employees, or just the selected ones. Never includes TOTP
+  secrets.
+- **Bulk actions** — select employees with the row checkboxes to enroll,
+  re-enroll, unenroll, or delete several at once.
+- **Search** — filter the employee list by name or email.
+
+Destructive actions (unenroll, delete, bulk variants) go through a custom
+confirmation dialog rather than the browser's native `confirm()`/`alert()`
+popups.
 
 ### Who can use it
 
@@ -123,14 +144,17 @@ Project layout:
 ```
 Vixxing/
 ├── requirements.txt
+├── .github/workflows/        # CI: Django tests + dependency review on PRs
 └── TOTP/                     # Django project root (run manage.py from here)
     ├── manage.py
     ├── .env.example          # copy to .env and fill in — see setup
     ├── TOTP/                 # settings, URLs, WSGI/ASGI
     └── verify/               # the app: dashboard, enrollment, verification
         ├── models.py         # EmployeeMFA (secret + enrollment flag)
-        ├── views.py          # enroll / verify / add / unenroll / dashboard
+        ├── views.py          # enroll / verify / add / unenroll / delete /
+        │                     # CSV import-export / bulk actions / dashboard
         ├── urls.py
+        ├── tests.py          # run with `python manage.py test`
         └── templates/verify/ # dashboard + enrollment email templates
 ```
 
@@ -143,7 +167,7 @@ Vixxing/
 - Python 3.12+
 - An email-sending path. The repo is wired for **Microsoft Graph** out of the
   box (see the next section), but any Django email backend works — see
-  [Swapping the email backend](#swapping-the-email-backend).
+  [Delivery backends and automatic fallback](#delivery-backends-and-automatic-fallback).
 
 ### Steps
 
@@ -190,6 +214,7 @@ Create `TOTP/.env` with the following. The app reads all of these; the shipped
 | Variable              | Required | What it is                                                                 |
 | --------------------- | -------- | -------------------------------------------------------------------------- |
 | `SECRET_KEY`          | Yes      | Django secret key. Generate a fresh, random one — do not reuse an example. |
+| `ALLOWED_HOSTS`       | Yes      | Hostname/IP the app is served on (Django's `ALLOWED_HOSTS`). One value.    |
 | `MSGRAPH_TENANT_ID`   | Graph    | Azure/Entra tenant (directory) ID.                                         |
 | `MSGRAPH_CLIENT_ID`   | Graph    | Application (client) ID of your app registration.                          |
 | `MSGRAPH_CLIENT_SECRET` | Graph  | Client secret for that app registration.                                   |
@@ -207,6 +232,18 @@ Generate a Django secret key:
 ```bash
 python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
 ```
+
+### Running the tests
+
+```bash
+cd TOTP
+python manage.py test
+```
+
+Tests mock outbound mail, so they never hit the real Microsoft Graph API or
+an SMTP server. GitHub Actions runs the same suite on every push and pull
+request against `main` (Python 3.12 and 3.13), and a Dependency Review
+Action flags known-vulnerable packages introduced by a PR.
 
 ### A few strings are hardcoded — change them for your org
 
@@ -286,17 +323,18 @@ for the public internet, and you should not expose it there.**
 
 The shipped configuration reflects that intent:
 
-- `DEBUG = True`
-- `ALLOWED_HOSTS = ['*']`
+- `DEBUG = False` and `ALLOWED_HOSTS` is read from `.env` (set it to the real
+  hostname/IP the app is served on — see [Environment variables](#environment-variables)).
 - `SESSION_COOKIE_SECURE = False` and `CSRF_COOKIE_SECURE = False` (no HTTPS
   assumed)
 
-Those settings are convenient on a LAN and unsafe on the open internet. Before
-this touches anything beyond a trusted internal segment, at minimum you would
-need to set `DEBUG = False`, pin `ALLOWED_HOSTS` to real hostnames, terminate
-TLS and turn the secure-cookie flags back on, and put it behind proper access
-controls (VPN, internal reverse proxy, IP allow-listing). Treat the database as
-sensitive: it holds the TOTP secrets that back every verification.
+Those cookie settings are convenient on a LAN and unsafe on the open internet.
+Before this touches anything beyond a trusted internal segment, at minimum you
+would need to terminate TLS and turn the secure-cookie flags back on (there's
+a commented-out `SECURE_PROXY_SSL_HEADER` in `settings.py` for the reverse-proxy
+case), and put it behind proper access controls (VPN, internal reverse proxy,
+IP allow-listing). Treat the database as sensitive: it holds the TOTP secrets
+that back every verification.
 
 Run it on the inside. Keep it there.
 
