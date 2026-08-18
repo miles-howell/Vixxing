@@ -323,20 +323,19 @@ for the public internet, and you should not expose it there.**
 
 The shipped configuration reflects that intent:
 
-- `DEBUG = False` and `ALLOWED_HOSTS` is read from `.env` (set it to the real
-  hostname/IP the app is served on — see [Environment variables](#environment-variables)).
 - `SESSION_COOKIE_SECURE = False` and `CSRF_COOKIE_SECURE = False` (no HTTPS
   assumed)
 
-Those cookie settings are convenient on a LAN and unsafe on the open internet.
+Those cookie settings are convenient during development and unsafe in a production environment.
 Before this touches anything beyond a trusted internal segment, at minimum you
 would need to terminate TLS and turn the secure-cookie flags back on (there's
 a commented-out `SECURE_PROXY_SSL_HEADER` in `settings.py` for the reverse-proxy
 case), and put it behind proper access controls (VPN, internal reverse proxy,
-IP allow-listing). Treat the database as sensitive: it holds the TOTP secrets
-that back every verification.
+IP allow-listing). 
 
-Run it on the inside. Keep it there.
+*Unencrypted MFA secrets are transmitted over the network, as well as over email unless you force HTTPS and encrypt the emails.*
+My preferred hosting stack is NSSM + Caddy on a Windows Server VM, with Exchange Mailflow rules for encrypting emails (assuming you own the tenant for both the sender and recipient).
+
 
 ---
 
