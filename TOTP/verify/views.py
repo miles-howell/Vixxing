@@ -3,8 +3,10 @@ import qrcode
 import io
 import csv
 import json
+import logging
 import email.utils
 from base64 import b64encode
+from django.conf import settings
 from django.shortcuts import render, get_object_or_404
 from django.core.mail import EmailMultiAlternatives
 from email.message import MIMEPart
@@ -15,6 +17,8 @@ from django.contrib.auth.models import User
 from django.contrib.admin.views.decorators import staff_member_required
 from django.views.decorators.http import require_POST
 from django.contrib.auth.models import Group
+
+logger = logging.getLogger(__name__)
 
 
 def _unique_username(base):
@@ -57,10 +61,67 @@ def _parse_id_list(request):
     return ids
 
 
+class EnrollmentDeliveryError(Exception):
+    """Raised when every configured delivery backend failed to send the enrollment email."""
+
+    def __init__(self, failures):
+        self.failures = failures  # [(backend_name, error_message), ...], in the order attempted
+        super().__init__(f"Enrollment email delivery failed: {failures}")
+
+
+def _delivery_backends():
+    """Ordered list of (display_name, mailer_alias) to attempt delivery
+    through - aliases refer to settings.MAILERS. Graph API ('default') is
+    tried first - it authenticates with a short-lived OAuth token rather than
+    a standing SMTP password. SMTP ('smtp') is a fallback, attempted only if
+    Graph isn't configured or fails, and only if SMTP itself is configured -
+    settings.py only defines the 'smtp' mailer at all when EMAIL_HOST is set.
+    """
+    backends = [('Graph API', 'default')]
+    if 'smtp' in settings.MAILERS:
+        backends.append(('SMTP', 'smtp'))
+    return backends
+
+
+def _deliver_message(msg):
+    """Sends msg through the first configured mailer that succeeds, trying
+    each in priority order. Returns (backend_name, prior_failures), where
+    prior_failures lists any higher-priority backends that were tried and
+    failed first as (name, error_message) pairs. Raises EnrollmentDeliveryError
+    (with everything tried) if every configured backend failed, or none are
+    configured at all.
+    """
+    failures = []
+    for name, alias in _delivery_backends():
+        try:
+            msg.send(using=alias)
+        except Exception as exc:
+            logger.warning("Enrollment email delivery via %s failed: %s", name, exc)
+            failures.append((name, str(exc)))
+            continue
+        return name, failures
+    raise EnrollmentDeliveryError(failures)
+
+
+def _delivery_success_message(delivery_method, prior_failures):
+    if not prior_failures:
+        return f"Message succeeded via {delivery_method}."
+    failed_names = ', '.join(name for name, _ in prior_failures)
+    return f"Message succeeded via {delivery_method}, failed via {failed_names}."
+
+
+def _delivery_failure_message(failures):
+    if not failures:
+        return "No delivery method is configured. Add Graph API or SMTP credentials to .env."
+    failed_names = ', '.join(name for name, _ in failures)
+    return f"Message failed via {failed_names}."
+
+
 def _send_enrollment_email(user, force):
     """Generates (or reuses) an MFA secret and emails the QR code, persisting the
-    enrollment only once the email is confirmed sent. Raises on delivery failure,
-    leaving any existing MFA record untouched. Returns the QR PNG BytesIO buffer.
+    enrollment only once delivery is confirmed. Raises EnrollmentDeliveryError if
+    every configured backend fails, leaving any existing MFA record untouched.
+    Returns (qr_png_buffer, delivery_method, prior_failures) - see _deliver_message.
     """
     employee_mfa = EmployeeMFA.objects.filter(user=user).first()
     existing_secret = employee_mfa.mfa_secret if employee_mfa else None
@@ -116,18 +177,19 @@ def _send_enrollment_email(user, force):
     # Downloadable copy: the filename/content/mimetype form is unchanged in 6.0.
     msg.attach('enrollment_qr.png', qr_png, 'image/png')
 
-    # May raise - callers decide how to report the failure. Email delivery
-    # failing must not create or mutate the MFA record.
-    msg.send()
+    # Raises EnrollmentDeliveryError if every configured backend fails - callers
+    # decide how to report it. Delivery failing must not create or mutate the
+    # MFA record.
+    delivery_method, prior_failures = _deliver_message(msg)
 
-    # Email confirmed sent - now it's safe to persist the enrollment.
+    # Delivery confirmed - now it's safe to persist the enrollment.
     if generate_new_secret:
         employee_mfa, _ = EmployeeMFA.objects.get_or_create(user=user)
         employee_mfa.mfa_secret = secret
         employee_mfa.is_enrolled = True
         employee_mfa.save()
 
-    return buffer
+    return buffer, delivery_method, prior_failures
 
 
 # Create your views here.
@@ -148,15 +210,20 @@ def generate_enrollment_qr(request, user_id):
             pass
 
     try:
-        buffer = _send_enrollment_email(user, force)
-    except Exception:
-        # Email delivery failed - the employee stays exactly as
-        # enrolled/not-enrolled as before this request.
+        buffer, delivery_method, prior_failures = _send_enrollment_email(user, force)
+    except Exception as exc:
+        # Delivery failed - the employee stays exactly as enrolled/not-enrolled
+        # as before this request.
         if request.method == "POST":
+            message = (
+                _delivery_failure_message(exc.failures)
+                if isinstance(exc, EnrollmentDeliveryError)
+                else 'Failed to send enrollment email. No changes were saved.'
+            )
             return JsonResponse(
                 {
                     'status': 'error',
-                    'message': 'Failed to send enrollment email. No changes were saved.',
+                    'message': message,
                     'is_enrolled': was_enrolled,
                 },
                 status=502,
@@ -165,7 +232,11 @@ def generate_enrollment_qr(request, user_id):
 
     # Handle both Dashboard API requests (POST) and manual browser visits (GET)
     if request.method == "POST":
-        return JsonResponse({'status': 'success', 'message': 'Email sent.', 'is_enrolled': True})
+        return JsonResponse({
+            'status': 'success',
+            'message': _delivery_success_message(delivery_method, prior_failures),
+            'is_enrolled': True,
+        })
 
     # Fallback for manual GET requests (e.g., typing /enroll/1/ in the browser)
     buffer.seek(0)
@@ -355,18 +426,34 @@ def bulk_enroll_employees(request):
     users = User.objects.filter(id__in=ids, groups__name='Employees').select_related('employeemfa')
 
     enrolled, skipped, failed = [], [], []
+    fallback_count = 0
     for user in users:
         if _is_enrolled(user):
             skipped.append(user.id)
             continue
         try:
-            _send_enrollment_email(user, force=False)
-        except Exception:
-            failed.append({'id': user.id, 'email': user.email})
+            _, delivery_method, prior_failures = _send_enrollment_email(user, force=False)
+        except Exception as exc:
+            message = (
+                _delivery_failure_message(exc.failures)
+                if isinstance(exc, EnrollmentDeliveryError)
+                else 'Failed to send enrollment email.'
+            )
+            failed.append({'id': user.id, 'email': user.email, 'message': message})
             continue
+        if prior_failures:
+            fallback_count += 1
         enrolled.append(_user_summary(user, True))
 
-    return JsonResponse({'status': 'success', 'enrolled': enrolled, 'skipped': skipped, 'failed': failed})
+    message = f"Enrolled {len(enrolled)} employee(s)."
+    if fallback_count:
+        message += f" {fallback_count} used a fallback delivery method."
+    if skipped:
+        message += f" Skipped {len(skipped)} already enrolled."
+    if failed:
+        message += f" Failed to email {len(failed)}."
+
+    return JsonResponse({'status': 'success', 'enrolled': enrolled, 'skipped': skipped, 'failed': failed, 'message': message})
 
 
 @staff_member_required
@@ -377,18 +464,34 @@ def bulk_reenroll_employees(request):
     users = User.objects.filter(id__in=ids, groups__name='Employees').select_related('employeemfa')
 
     re_enrolled, skipped, failed = [], [], []
+    fallback_count = 0
     for user in users:
         if not _is_enrolled(user):
             skipped.append(user.id)
             continue
         try:
-            _send_enrollment_email(user, force=True)
-        except Exception:
-            failed.append({'id': user.id, 'email': user.email})
+            _, delivery_method, prior_failures = _send_enrollment_email(user, force=True)
+        except Exception as exc:
+            message = (
+                _delivery_failure_message(exc.failures)
+                if isinstance(exc, EnrollmentDeliveryError)
+                else 'Failed to send enrollment email.'
+            )
+            failed.append({'id': user.id, 'email': user.email, 'message': message})
             continue
+        if prior_failures:
+            fallback_count += 1
         re_enrolled.append(user.id)
 
-    return JsonResponse({'status': 'success', 're_enrolled': re_enrolled, 'skipped': skipped, 'failed': failed})
+    message = f"Re-enrolled {len(re_enrolled)} employee(s)."
+    if fallback_count:
+        message += f" {fallback_count} used a fallback delivery method."
+    if skipped:
+        message += f" Skipped {len(skipped)} not yet enrolled."
+    if failed:
+        message += f" Failed to email {len(failed)}."
+
+    return JsonResponse({'status': 'success', 're_enrolled': re_enrolled, 'skipped': skipped, 'failed': failed, 'message': message})
 
 
 @staff_member_required

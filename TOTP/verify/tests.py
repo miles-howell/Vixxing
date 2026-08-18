@@ -3,10 +3,17 @@ from unittest.mock import patch
 
 from django.contrib.auth.models import Group, User
 from django.core import mail
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from .models import EmployeeMFA
+
+# A 'smtp' mailer alias that will actually succeed (locmem), paired with
+# whatever MAILERS['default'] the test under it overrides to simulate a
+# Graph failure - used to exercise the SMTP fallback path.
+SMTP_FALLBACK_MAILER = {
+    'smtp': {'BACKEND': 'django.core.mail.backends.locmem.EmailBackend'},
+}
 
 
 def make_employee(email, username=None, enrolled=False, secret=''):
@@ -86,6 +93,61 @@ class GenerateEnrollmentQrTests(TestCase):
         employee_mfa = EmployeeMFA.objects.get(user=self.employee)
         self.assertTrue(employee_mfa.is_enrolled)
         self.assertTrue(employee_mfa.mfa_secret)
+
+
+class EnrollmentDeliveryFallbackTests(TestCase):
+    """Graph API ('default') is tried first; SMTP ('smtp') only kicks in if
+    Graph fails or isn't configured, and only when settings.MAILERS actually
+    defines an 'smtp' mailer (i.e. EMAIL_HOST was set).
+    """
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(
+            username='fallback-admin', email='fallback-admin@example.com', password='password'
+        )
+        self.client.force_login(self.admin)
+        self.employee = User.objects.create_user(
+            username='fallback-employee', email='fallback-employee@example.com', password='password'
+        )
+        self.url = reverse('verify:enroll_user', args=[self.employee.id])
+
+    def _post(self):
+        return self.client.post(self.url, data=json.dumps({'force': False}), content_type='application/json')
+
+    @override_settings(MAILERS={'default': {'BACKEND': 'django.core.mail.backends.dummy.EmailBackend'}, **SMTP_FALLBACK_MAILER})
+    def test_falls_back_to_smtp_when_graph_fails(self):
+        # The dummy backend silently drops mail without sending it, so
+        # send_messages() returns 0 sent - Graph "fails" from our point of
+        # view without needing real credentials or network access.
+        with patch(
+            'django.core.mail.backends.dummy.EmailBackend.send_messages',
+            side_effect=Exception('Graph auth failed'),
+        ):
+            response = self._post()
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data['status'], 'success')
+        self.assertIn('SMTP', data['message'])
+        self.assertIn('Graph API', data['message'])
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertTrue(EmployeeMFA.objects.get(user=self.employee).is_enrolled)
+
+    @override_settings(MAILERS={'default': {'BACKEND': 'django.core.mail.backends.dummy.EmailBackend'}})
+    def test_fails_cleanly_when_graph_fails_and_smtp_is_not_configured(self):
+        # No 'smtp' key in MAILERS at all here - mirrors an install that never
+        # set EMAIL_HOST, so there's nothing to fall back to.
+        with patch(
+            'django.core.mail.backends.dummy.EmailBackend.send_messages',
+            side_effect=Exception('Graph auth failed'),
+        ):
+            response = self._post()
+
+        self.assertEqual(response.status_code, 502)
+        data = response.json()
+        self.assertEqual(data['status'], 'error')
+        self.assertIn('Graph API', data['message'])
+        self.assertFalse(EmployeeMFA.objects.filter(user=self.employee).exists())
 
 
 class UnenrollAndDeleteTests(TestCase):
