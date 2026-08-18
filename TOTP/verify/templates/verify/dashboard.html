@@ -225,6 +225,24 @@
     </div>
 </div>
 
+<!-- Custom centered notice modal (replaces native browser alert() popups) -->
+<div class="modal fade" id="noticeModal" tabindex="-1" aria-labelledby="noticeModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="noticeModalTitle">Notice</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="noticeModalMessage" class="mb-0"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     // Dark mode toggle (persisted across visits; theme is applied pre-paint in <head>)
@@ -311,6 +329,18 @@
             confirmModalEl.addEventListener('hidden.bs.modal', onHidden);
             confirmModal.show();
         });
+    }
+
+    // ---- Custom notice dialog (centered in the viewport, replaces native alert()) ----
+    const noticeModalEl = document.getElementById('noticeModal');
+    const noticeModal = new bootstrap.Modal(noticeModalEl);
+    const noticeModalTitle = document.getElementById('noticeModalTitle');
+    const noticeModalMessage = document.getElementById('noticeModalMessage');
+
+    function customNotice(message, { title = 'Notice' } = {}) {
+        noticeModalTitle.textContent = title;
+        noticeModalMessage.textContent = message;
+        noticeModal.show();
     }
 
     // ---- Add Employees modal ----
@@ -518,6 +548,8 @@
             if (!confirmed) return;
         }
 
+        const noticeTitle = forceRegenerate ? 'Regenerate QR' : 'Email QR Code';
+
         fetch(`${enrollUrlBase}${userId}/`, {
             method: 'POST',
             headers: {
@@ -526,17 +558,14 @@
             },
             body: JSON.stringify({ force: forceRegenerate })
         })
-        .then(response => {
-            if (!response.ok) throw new Error('request failed');
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
-            alert('QR Code successfully sent!');
-            if (!forceRegenerate) {
+            customNotice(data.message, { title: noticeTitle });
+            if (data.status === 'success' && !forceRegenerate) {
                 updateEmployeeRowEnrolled(userId, true);
             }
         })
-        .catch(() => alert('Failed to send enrollment email.'));
+        .catch(() => customNotice('Failed to send enrollment email.', { title: noticeTitle }));
     }
 
     // 3. Unenroll Employee (clears MFA, keeps the account)
@@ -557,7 +586,7 @@
         })
         .then(response => {
             if (response.ok) updateEmployeeRowEnrolled(userId, false);
-            else alert('Failed to unenroll employee.');
+            else customNotice('Failed to unenroll employee.', { title: 'Unenroll Employee' });
         });
     }
 
@@ -582,10 +611,10 @@
                 removeEmployeeRow(userId);
                 updateSelectionUI();
             } else {
-                alert('Failed to delete employee.');
+                customNotice('Failed to delete employee.', { title: 'Delete Employee' });
             }
         })
-        .catch(() => alert('Failed to delete employee.'));
+        .catch(() => customNotice('Failed to delete employee.', { title: 'Delete Employee' }));
     }
 
     // 4. Verify Code
@@ -643,7 +672,7 @@
                 addEmployeeModal.hide();
                 let msg = `Imported ${data.created.length} employee(s).`;
                 if (data.skipped.length) msg += ` Skipped ${data.skipped.length} existing email(s).`;
-                alert(msg);
+                customNotice(msg, { title: 'Import CSV' });
             } else {
                 showAddEmployeeError(data.message || 'Import failed.');
             }
@@ -677,13 +706,10 @@
         postJson(bulkEnrollUrl, { user_ids: ids })
             .then(data => {
                 (data.enrolled || []).forEach(user => updateEmployeeRowEnrolled(user.id, true));
-                let msg = `Enrolled ${data.enrolled.length} employee(s).`;
-                if (data.skipped.length) msg += ` Skipped ${data.skipped.length} already enrolled.`;
-                if (data.failed.length) msg += ` Failed to email ${data.failed.length}.`;
-                alert(msg);
+                customNotice(data.message, { title: 'Enroll Selected Employees' });
                 clearSelection();
             })
-            .catch(() => alert('Bulk enroll failed.'));
+            .catch(() => customNotice('Bulk enroll failed.', { title: 'Enroll Selected Employees' }));
     }
 
     async function bulkReenrollSelected() {
@@ -699,13 +725,10 @@
 
         postJson(bulkReenrollUrl, { user_ids: ids })
             .then(data => {
-                let msg = `Re-enrolled ${data.re_enrolled.length} employee(s).`;
-                if (data.skipped.length) msg += ` Skipped ${data.skipped.length} not yet enrolled.`;
-                if (data.failed.length) msg += ` Failed to email ${data.failed.length}.`;
-                alert(msg);
+                customNotice(data.message, { title: 'Re-Enroll Selected Employees' });
                 clearSelection();
             })
-            .catch(() => alert('Bulk re-enroll failed.'));
+            .catch(() => customNotice('Bulk re-enroll failed.', { title: 'Re-Enroll Selected Employees' }));
     }
 
     async function bulkUnenrollSelected() {
@@ -724,10 +747,10 @@
                 (data.unenrolled || []).forEach(id => updateEmployeeRowEnrolled(id, false));
                 let msg = `Unenrolled ${data.unenrolled.length} employee(s).`;
                 if (data.skipped.length) msg += ` Skipped ${data.skipped.length} not enrolled.`;
-                alert(msg);
+                customNotice(msg, { title: 'Unenroll Selected Employees' });
                 clearSelection();
             })
-            .catch(() => alert('Bulk unenroll failed.'));
+            .catch(() => customNotice('Bulk unenroll failed.', { title: 'Unenroll Selected Employees' }));
     }
 
     async function bulkDeleteSelected() {
@@ -744,10 +767,10 @@
         postJson(bulkDeleteUrl, { user_ids: ids })
             .then(data => {
                 (data.deleted || []).forEach(removeEmployeeRow);
-                alert(`Deleted ${data.deleted.length} employee(s).`);
+                customNotice(`Deleted ${data.deleted.length} employee(s).`, { title: 'Delete Selected Employees' });
                 updateSelectionUI();
             })
-            .catch(() => alert('Bulk delete failed.'));
+            .catch(() => customNotice('Bulk delete failed.', { title: 'Delete Selected Employees' }));
     }
 
     // Search logic

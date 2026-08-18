@@ -194,7 +194,13 @@ Create `TOTP/.env` with the following. The app reads all of these; the shipped
 | `MSGRAPH_CLIENT_ID`   | Graph    | Application (client) ID of your app registration.                          |
 | `MSGRAPH_CLIENT_SECRET` | Graph  | Client secret for that app registration.                                   |
 | `MSGRAPH_USER_ID`     | Graph    | The mailbox (user ID or UPN) enrollment mail is sent **from**.             |
-| `DEFAULT_FROM_EMAIL`  | Graph    | Default From address Django uses.                                          |
+| `EMAIL_HOST`          | SMTP     | SMTP server hostname. Leave unset to disable the SMTP fallback entirely.   |
+| `EMAIL_PORT`          | SMTP     | SMTP port. Defaults to `587`.                                              |
+| `EMAIL_HOST_USER`     | SMTP     | SMTP username, if your server requires auth.                               |
+| `EMAIL_HOST_PASSWORD` | SMTP     | SMTP password, if your server requires auth.                               |
+| `EMAIL_USE_TLS`       | SMTP     | `true`/`false`. Defaults to `true`. Mutually exclusive with `EMAIL_USE_SSL`.|
+| `EMAIL_USE_SSL`       | SMTP     | `true`/`false`. Defaults to `false`.                                       |
+| `DEFAULT_FROM_EMAIL`  | Yes      | Default From address, used by both Graph and SMTP.                        |
 
 Generate a Django secret key:
 
@@ -240,13 +246,27 @@ own:
 The application ID and secret are the keys to sending mail as your tenant — they
 belong in your `.env`, never in version control.
 
-### Swapping the email backend
+### Delivery backends and automatic fallback
 
-Nothing about the design requires Microsoft Graph. Enrollment mail is sent
-through Django's normal email machinery, so you can point `MAILERS` /
-`EMAIL_BACKEND` in `TOTP/TOTP/settings.py` at plain SMTP or any other Django
-email backend and drop the Graph variables entirely. The QR generation and
-verification logic do not change.
+Enrollment mail is sent through Django's normal email machinery via
+`settings.MAILERS` (`TOTP/TOTP/settings.py`), which defines two named
+mailers:
+
+1. **`default` (Microsoft Graph API)** — tried first. It authenticates with
+   a short-lived OAuth token rather than a standing SMTP password, so it's
+   the preferred path when both are available.
+2. **`smtp`** — tried automatically if Graph delivery fails for any reason
+   (bad/expired credentials, tenant outage, network issue), or if Graph
+   isn't configured at all. This mailer only exists when `EMAIL_HOST` is
+   set in `.env`; leave it unset to disable the fallback entirely.
+
+Nothing about the design requires Microsoft Graph — if you'd rather run
+SMTP-only, drop the Graph variables from `.env` and just set the SMTP ones;
+the `default` mailer will fail immediately (no Graph credentials to try)
+and every send will go straight to SMTP. The dashboard reports which
+backend actually delivered each message (and which one failed first, if
+any) so a broken Graph API doesn't go unnoticed just because SMTP quietly
+picked up the slack.
 
 ### Local secrets and state (git-ignored)
 

@@ -119,17 +119,41 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
+#
+# Enrollment mail is delivered through whichever of these named mailers
+# succeeds, tried in this order (see verify/views.py:_delivery_backends):
+#   1. 'default' (Microsoft Graph API) - preferred; authenticates with a
+#      short-lived OAuth token instead of a standing SMTP password.
+#   2. 'smtp' - used automatically as a fallback if Graph delivery fails, or
+#      if Graph isn't configured at all.
+# The 'smtp' mailer is only defined at all when EMAIL_HOST is set, so
+# verify/views.py:_delivery_backends can gate on plain alias membership in
+# MAILERS - which also happens to be exactly what Django's test runner
+# preserves when it swaps every mailer to an in-memory backend for tests.
+
+MSGRAPH_TENANT_ID = os.getenv('MSGRAPH_TENANT_ID')
+MSGRAPH_CLIENT_ID = os.getenv('MSGRAPH_CLIENT_ID')
+MSGRAPH_CLIENT_SECRET = os.getenv('MSGRAPH_CLIENT_SECRET')
+MSGRAPH_USER_ID = os.getenv('MSGRAPH_USER_ID')
 
 MAILERS = {
     'default': {
         'BACKEND': 'msgraphbackend.MSGraphBackend',
     },
 }
-MSGRAPH_TENANT_ID = os.getenv('MSGRAPH_TENANT_ID')
-MSGRAPH_CLIENT_ID = os.getenv('MSGRAPH_CLIENT_ID')
-MSGRAPH_CLIENT_SECRET = os.getenv('MSGRAPH_CLIENT_SECRET')
-MSGRAPH_USER_ID = os.getenv('MSGRAPH_USER_ID')
 
+if os.getenv('EMAIL_HOST'):
+    MAILERS['smtp'] = {
+        'BACKEND': 'django.core.mail.backends.smtp.EmailBackend',
+        'OPTIONS': {
+            'host': os.getenv('EMAIL_HOST'),
+            'port': int(os.getenv('EMAIL_PORT', '587')),
+            'username': os.getenv('EMAIL_HOST_USER'),
+            'password': os.getenv('EMAIL_HOST_PASSWORD'),
+            'use_tls': os.getenv('EMAIL_USE_TLS', 'true').lower() == 'true',
+            'use_ssl': os.getenv('EMAIL_USE_SSL', 'false').lower() == 'true',
+        },
+    }
 
-# The default address Graph will attempt to send from
+# The default From address for enrollment mail, used by both mailers.
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
