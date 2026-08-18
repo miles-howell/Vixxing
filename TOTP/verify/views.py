@@ -35,9 +35,13 @@ def _is_enrolled(user):
 @staff_member_required
 @require_POST
 def generate_enrollment_qr(request, user_id):
-    # FIX 1: Grab the User, then Get-or-Create the MFA profile to prevent 404s
+    # Grab the User, and look up (without creating) any existing MFA profile.
+    # The MFA row is only created/updated once the email has actually sent
+    # successfully - see below.
     user = get_object_or_404(User, id=user_id)
-    employee_mfa, created = EmployeeMFA.objects.get_or_create(user=user)
+    employee_mfa = EmployeeMFA.objects.filter(user=user).first()
+    existing_secret = employee_mfa.mfa_secret if employee_mfa else None
+    was_enrolled = employee_mfa.is_enrolled if employee_mfa else False
 
     force = False
     if request.method == "POST":
@@ -47,16 +51,15 @@ def generate_enrollment_qr(request, user_id):
         except json.JSONDecodeError:
             pass
 
-    # Generate a random 32-character base32 secret
-    if not employee_mfa.mfa_secret or force:
-        employee_mfa.mfa_secret = pyotp.random_base32()
-        employee_mfa.is_enrolled = True
-        employee_mfa.save()
+    # Decide whether we need a fresh secret, but hold off writing anything
+    # to the database until we know the email actually went out.
+    generate_new_secret = not existing_secret or force
+    secret = pyotp.random_base32() if generate_new_secret else existing_secret
 
     # Create the provisioning URI for Microsoft/Google Authenticator
-    totp = pyotp.totp.TOTP(employee_mfa.mfa_secret)
+    totp = pyotp.totp.TOTP(secret)
     otp_url = totp.provisioning_uri(
-        name=employee_mfa.user.email,
+        name=user.email,
         issuer_name='Company HelpDesk'
     )
 
@@ -81,7 +84,7 @@ def generate_enrollment_qr(request, user_id):
         subject='Set up your HelpDesk MFA (takes about a minute)',
         body=text_body,
         from_email='company@domain.com',
-        to=[employee_mfa.user.email],
+        to=[user.email],
     )
     msg.attach_alternative(html_body, "text/html")
 
@@ -99,11 +102,32 @@ def generate_enrollment_qr(request, user_id):
     # Downloadable copy: the filename/content/mimetype form is unchanged in 6.0.
     msg.attach('enrollment_qr.png', qr_png, 'image/png')
 
-    msg.send()
+    try:
+        msg.send()
+    except Exception:
+        # Email delivery failed - do not create or mutate the MFA record.
+        # The employee stays exactly as enrolled/not-enrolled as before this request.
+        if request.method == "POST":
+            return JsonResponse(
+                {
+                    'status': 'error',
+                    'message': 'Failed to send enrollment email. No changes were saved.',
+                    'is_enrolled': was_enrolled,
+                },
+                status=502,
+            )
+        raise
 
-    # FIX 2: Handle both Dashboard API requests (POST) and manual browser visits (GET)
+    # Email confirmed sent - now it's safe to persist the enrollment.
+    if generate_new_secret:
+        employee_mfa, _ = EmployeeMFA.objects.get_or_create(user=user)
+        employee_mfa.mfa_secret = secret
+        employee_mfa.is_enrolled = True
+        employee_mfa.save()
+
+    # Handle both Dashboard API requests (POST) and manual browser visits (GET)
     if request.method == "POST":
-        return JsonResponse({'status': 'success', 'message': 'Email sent.', 'is_enrolled': employee_mfa.is_enrolled})
+        return JsonResponse({'status': 'success', 'message': 'Email sent.', 'is_enrolled': True})
 
     # Fallback for manual GET requests (e.g., typing /enroll/1/ in the browser)
     buffer.seek(0)
