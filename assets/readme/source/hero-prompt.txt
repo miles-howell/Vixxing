@@ -1,0 +1,43 @@
+Vixxing README hero: generated subject layer
+==============================================
+
+Communication job: the telephone call is the attack surface Vixxing protects.
+The handset sits in the reserved area of hero-layout.svg (x 760-1160, y 24-270
+of a 1200x420 canvas) and replaces the vector placeholder group id="subject".
+Title text, the code cells, and "Caller Verified" stay in SVG and must NOT be
+generated.
+
+Prompt
+------
+A single classic corded desk-telephone handset, studio product render, floating
+at a diagonal: mouthpiece at lower left, earpiece at upper right, tilted about
+28 degrees, seen slightly from above at three-quarter view. Matte charcoal
+plastic (#1C222B to #2A313C), softly rounded, minimal and modern, no brand
+marks. A short, tight coil of matching charcoal cord hangs from the mouthpiece
+end and stays fully inside the frame. Lighting: dark, low-key studio light with
+a thin, crisp emerald-green rim light (#2EA66A) tracing the top edge of the
+handset, as if lit by a status light. Subtle, realistic surface sheen; no
+glow haze, no lens flare.
+
+Composition: landscape 16:10, handset centered, occupying about 80% of the
+frame width, with generous even padding on all sides so no part touches an
+edge.
+
+Background: a perfectly flat, solid magenta (#FF00FF) background with no
+gradient, texture, floor, reflection, cast shadow, or vignette. Do not use any
+magenta or pink on the handset itself.
+
+Constraints: one isolated object only. No text, no letters, no numbers, no
+keypad, no screen, no logo, no watermark, no hands, no people, no desk.
+
+Notes for the composer
+----------------------
+- Key color is magenta (not green) because the subject has a green rim light.
+- Upload the image as generated (PNG preferred, at least 1600px wide). The
+  magenta is removed, the transparent cutout is saved as source/hero-subject.png,
+  composited into hero-layout.svg, and exported as assets/readme/hero.png.
+
+Result
+------
+Two candidates were generated; option 2 (strong green rim, long fading cord)
+was used. Cutout: source/hero-subject.png. Published: assets/readme/hero.png.

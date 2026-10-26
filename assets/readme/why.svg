@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1200" height="470" viewBox="0 0 1200 470"
+     role="img" aria-labelledby="title desc">
+  <title id="title">Knowledge versus possession</title>
+  <desc id="desc">Everything a vishing caller can recite — caller ID, employee ID, date of birth, manager's name, last four of an SSN, security answers — can be spoofed, leaked, or looked up. Only the enrolled employee has the live six-digit code on their phone.</desc>
+
+  <rect width="1200" height="470" rx="24" fill="#0E1116"/>
+
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+    <!-- Left: what the caller can know -->
+    <g id="knows" transform="translate(48 40)">
+      <rect width="532" height="390" rx="16" fill="#161B22" stroke="#2A313C" stroke-width="1.5"/>
+      <text x="32" y="50" fill="#8B95A3" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="17" letter-spacing="2">WHAT A CALLER CAN KNOW</text>
+      <text x="32" y="92" fill="#F2EFE8" font-size="30" font-weight="700">Facts leak.</text>
+      <g font-size="22" fill="#C9CED6">
+        <g transform="translate(32 140)"><path d="M0 -14 L14 0 M14 -14 L0 0" stroke="#E5484D" stroke-width="3" stroke-linecap="round"/><text x="30" y="0">Caller ID</text><text x="468" y="0" text-anchor="end" fill="#8B95A3" font-size="20">spoofed</text></g>
+        <g transform="translate(32 186)"><path d="M0 -14 L14 0 M14 -14 L0 0" stroke="#E5484D" stroke-width="3" stroke-linecap="round"/><text x="30" y="0">Employee ID</text><text x="468" y="0" text-anchor="end" fill="#8B95A3" font-size="20">looked up</text></g>
+        <g transform="translate(32 232)"><path d="M0 -14 L14 0 M14 -14 L0 0" stroke="#E5484D" stroke-width="3" stroke-linecap="round"/><text x="30" y="0">Date of birth</text><text x="468" y="0" text-anchor="end" fill="#8B95A3" font-size="20">breach dump</text></g>
+        <g transform="translate(32 278)"><path d="M0 -14 L14 0 M14 -14 L0 0" stroke="#E5484D" stroke-width="3" stroke-linecap="round"/><text x="30" y="0">Manager's name</text><text x="468" y="0" text-anchor="end" fill="#8B95A3" font-size="20">LinkedIn</text></g>
+        <g transform="translate(32 324)"><path d="M0 -14 L14 0 M14 -14 L0 0" stroke="#E5484D" stroke-width="3" stroke-linecap="round"/><text x="30" y="0">Last four of SSN</text><text x="468" y="0" text-anchor="end" fill="#8B95A3" font-size="20">leaked</text></g>
+        <g transform="translate(32 370)"><path d="M0 -14 L14 0 M14 -14 L0 0" stroke="#E5484D" stroke-width="3" stroke-linecap="round"/><text x="30" y="0">Security answers</text><text x="468" y="0" text-anchor="end" fill="#8B95A3" font-size="20">guessed</text></g>
+      </g>
+    </g>
+
+    <!-- Right: what only the employee has -->
+    <g id="has" transform="translate(620 40)">
+      <rect width="532" height="390" rx="16" fill="#161B22" stroke="#2EA66A" stroke-width="2"/>
+      <text x="32" y="50" fill="#8B95A3" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="17" letter-spacing="2">WHAT ONLY THE EMPLOYEE HAS</text>
+      <text x="32" y="92" fill="#F2EFE8" font-size="30" font-weight="700">A code that won't sit still.</text>
+
+      <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="40" font-weight="600" fill="#F2EFE8" text-anchor="middle" transform="translate(32 134)">
+        <rect x="0" width="56" height="74" rx="10" fill="#0E1116" stroke="#2A313C" stroke-width="2"/>
+        <rect x="64" width="56" height="74" rx="10" fill="#0E1116" stroke="#2A313C" stroke-width="2"/>
+        <rect x="128" width="56" height="74" rx="10" fill="#0E1116" stroke="#2A313C" stroke-width="2"/>
+        <rect x="212" width="56" height="74" rx="10" fill="#0E1116" stroke="#2A313C" stroke-width="2"/>
+        <rect x="276" width="56" height="74" rx="10" fill="#0E1116" stroke="#2A313C" stroke-width="2"/>
+        <rect x="340" width="56" height="74" rx="10" fill="#0E1116" stroke="#2A313C" stroke-width="2"/>
+        <text x="28" y="52">4</text><text x="92" y="52">8</text><text x="156" y="52">2</text>
+        <text x="240" y="52">9</text><text x="304" y="52">1</text><text x="368" y="52">3</text>
+      </g>
+      <g transform="translate(468 171)">
+        <circle r="22" fill="none" stroke="#2A313C" stroke-width="5"/>
+        <circle r="22" fill="none" stroke="#2EA66A" stroke-width="5" stroke-linecap="round" stroke-dasharray="82.9 138.2" transform="rotate(-90)"/>
+      </g>
+
+      <g font-size="22" fill="#C9CED6">
+        <g transform="translate(32 268)"><path d="M0 -8 L7 0 L18 -14" stroke="#2EA66A" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><text x="32" y="0">Lives on their enrolled phone</text></g>
+        <g transform="translate(32 314)"><path d="M0 -8 L7 0 L18 -14" stroke="#2EA66A" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><text x="32" y="0">Changes every 30 seconds</text></g>
+        <g transform="translate(32 360)"><path d="M0 -8 L7 0 L18 -14" stroke="#2EA66A" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><text x="32" y="0">Can't be researched in advance</text></g>
+      </g>
+    </g>
+  </g>
+</svg>
