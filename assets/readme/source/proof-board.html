@@ -1,0 +1,46 @@
+<!doctype html>
+<!-- Composition source for assets/readme/proof.png.
+     Screens are real captures of the verify dashboard running with demo employees.
+     Re-export: render #board at 1200 CSS px wide, 2x scale. -->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; background: transparent; }
+  #board {
+    width: 1200px; box-sizing: border-box; padding: 40px 48px 44px;
+    background: #0E1116; border-radius: 24px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #F2EFE8;
+    display: grid; grid-template-columns: 712px 1fr; gap: 36px;
+  }
+  .eyebrow { font: 17px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 2px; color: #8B95A3; margin: 0 0 16px; }
+  .shot { display: block; width: 100%; border-radius: 12px; }
+  .side { display: flex; flex-direction: column; justify-content: center; gap: 30px; }
+  .result-label { display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 700; margin: 0 0 12px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .ok .dot { background: #2EA66A; } .ok { color: #2EA66A; }
+  .no .dot { background: #E5484D; } .no { color: #E5484D; }
+  .modal { border-radius: 10px; outline: 2px solid #2A313C; }
+  .note { margin: 14px 0 0; font-size: 18px; color: #8B95A3; }
+</style>
+</head>
+<body>
+<div id="board">
+  <div>
+    <p class="eyebrow">THE AGENT DASHBOARD</p>
+    <img class="shot" src="screens/dashboard.png" alt="">
+    <p class="note">Demo employees. One row per person: enroll, verify, manage.</p>
+  </div>
+  <div class="side">
+    <div>
+      <p class="result-label ok"><span class="dot"></span>Right code</p>
+      <img class="shot modal" src="screens/verified-modal.png" alt="">
+    </div>
+    <div>
+      <p class="result-label no"><span class="dot"></span>Wrong or stale code</p>
+      <img class="shot modal" src="screens/rejected-modal.png" alt="">
+    </div>
+  </div>
+</div>
+</body>
+</html>
