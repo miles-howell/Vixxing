@@ -1,9 +1,13 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Helpdesk MFA Dashboard</title>
+    <link rel="icon" href="{% static 'verify/favicon.svg' %}" type="image/svg+xml">
+    <link rel="icon" href="{% static 'verify/favicon-32.png' %}" type="image/png" sizes="32x32">
+    <link rel="apple-touch-icon" href="{% static 'verify/apple-touch-icon.png' %}">
     <script>
         // Applied before first paint so the page never flashes the wrong theme.
         (function() {
