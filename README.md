@@ -12,7 +12,7 @@ an attacker calls the help desk, impersonates a real employee, and talks an
 agent into resetting their credentials.
 
 <p align="center">
-  <img src="./assets/readme/proof.png" width="100%" alt="The Vixxing agent dashboard listing demo employees with their MFA status, management buttons, and a 6-digit code field with a Verify button. A right code shows a Caller Verified dialog; a wrong or stale code shows Caller Not Verified: Invalid code. Do not proceed.">
+  <img src="./assets/readme/proof.png" width="100%" alt="The Vixxing agent dashboard: a searchable list of demo employees with enrollment status on the left, and the selected caller, Jordan Avery, on the right with a large 6-digit code field and a Verify caller button. A right code shows Caller verified, safe to proceed with the reset; a wrong or stale code shows Not verified: Invalid code. Do not proceed.">
 </p>
 
 ---
