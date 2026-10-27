@@ -16,152 +16,218 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-        body { background-color: var(--bs-tertiary-bg); color: var(--bs-body-color); transition: background-color 0.15s ease, color 0.15s ease; }
+        /* Call Desk: master/detail built around one live phone call.
+           Find the caller on the left, verify them in a large, focused pane on the right.
+           Warm stone neutrals, indigo accent. */
+        :root, [data-bs-theme="light"] {
+            --d-bg: #f5f5f4;
+            --d-surface: #ffffff;
+            --d-sunken: #fafaf9;
+            --d-border: #e7e5e4;
+            --d-text: #1c1917;
+            --d-muted: #78716c;
+            --d-accent: #4f46e5;
+            --d-accent-soft: #eef2ff;
+            --d-ok: #15803d;
+            --d-ok-soft: #dcfce7;
+            --d-bad: #b91c1c;
+            --d-bad-soft: #fee2e2;
+            --d-warn: #a16207;
+        }
+        [data-bs-theme="dark"] {
+            --d-bg: #0c0a09;
+            --d-surface: #1c1917;
+            --d-sunken: #171412;
+            --d-border: #292524;
+            --d-text: #f5f5f4;
+            --d-muted: #a8a29e;
+            --d-accent: #818cf8;
+            --d-accent-soft: rgba(129, 140, 248, 0.14);
+            --d-ok: #4ade80;
+            --d-ok-soft: rgba(74, 222, 128, 0.12);
+            --d-bad: #f87171;
+            --d-bad-soft: rgba(248, 113, 113, 0.12);
+            --d-warn: #facc15;
+        }
+        /* Bootstrap's primary buttons (bulk Enroll, modal buttons) follow the theme accent */
+        .btn-primary, .btn-outline-primary {
+            --bs-btn-border-color: var(--d-accent);
+            --bs-btn-hover-bg: var(--d-accent); --bs-btn-hover-border-color: var(--d-accent); --bs-btn-hover-color: #fff;
+            --bs-btn-active-bg: var(--d-accent); --bs-btn-active-border-color: var(--d-accent); --bs-btn-active-color: #fff;
+            --bs-btn-disabled-border-color: var(--d-accent);
+        }
+        .btn-primary { --bs-btn-bg: var(--d-accent); --bs-btn-color: #fff; --bs-btn-disabled-bg: var(--d-accent); --bs-btn-disabled-color: #fff; }
+        .btn-outline-primary { --bs-btn-color: var(--d-accent); --bs-btn-disabled-color: var(--d-accent); }
+        [data-bs-theme="dark"] .btn-primary,
+        [data-bs-theme="dark"] .btn-outline-primary { --bs-btn-hover-color: #1e1b4b; --bs-btn-active-color: #1e1b4b; }
+        [data-bs-theme="dark"] .btn-primary { --bs-btn-color: #1e1b4b; --bs-btn-disabled-color: #1e1b4b; }
+        [data-bs-theme="dark"] .btn-verify { color: #1e1b4b; }
+        .form-check-input:checked, .form-check-input:indeterminate { background-color: var(--d-accent); border-color: var(--d-accent); }
 
-        .dashboard-layout {
-            display: flex;
-            align-items: flex-start;
-            gap: 24px;
-            max-width: 1800px;
-            margin: 40px auto;
-            padding: 0 20px;
-        }
-        .panel {
-            background: var(--bs-body-bg);
-            padding: 32px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        .employee-panel { flex: 7 1 0; min-width: 0; }
-        .management-panel {
-            flex: 3 1 0;
-            min-width: 280px;
-            max-width: 400px;
-            position: sticky;
-            top: 24px;
-        }
-        @media (max-width: 900px) {
-            .dashboard-layout { flex-direction: column; }
-            .management-panel { position: static; width: 100%; }
+        html, body { height: 100%; }
+        body {
+            display: flex; flex-direction: column;
+            background: var(--d-bg); color: var(--d-text);
+            --bs-body-bg: var(--d-surface); --bs-body-color: var(--d-text);
+            --bs-border-color: var(--d-border);
         }
 
-        #employeeTable td, #employeeTable th { vertical-align: middle; padding: 0.9rem 1rem; }
-        .select-col { width: 44px; }
-        .delete-col { width: 60px; }
-        .mfa-status-cell { width: 140px; }
-        .mfa-status-cell i { font-size: 1.4rem; }
-        .management-cell { min-width: 230px; }
-        .management-cell .btn { white-space: nowrap; }
+        .desk { flex: 1; display: grid; grid-template-columns: 380px 1fr; min-height: 0; }
 
-        .mgmt-action-btn { text-align: left; }
+        /* ---- Left: caller lookup ---- */
+        .lookup {
+            display: flex; flex-direction: column; min-height: 0;
+            background: var(--d-surface); border-right: 1px solid var(--d-border);
+        }
+        .lookup-head { padding: 20px 20px 12px; }
+        .lookup-head h1 { font-size: 1.1rem; font-weight: 700; margin: 0; }
+        .lookup-head .sub { color: var(--d-muted); font-size: 0.82rem; }
+        .lookup-search { position: relative; margin-top: 14px; }
+        .lookup-search .form-control { padding: 10px 12px 10px 38px; border-radius: 10px; background: var(--d-sunken); }
+        .lookup-search .bi { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--d-muted); }
+        .list-tools {
+            display: flex; align-items: center; gap: 8px;
+            padding: 6px 20px; font-size: 0.8rem; color: var(--d-muted);
+            border-bottom: 1px solid var(--d-border);
+        }
+        #employeeTable { flex: 1; overflow-y: auto; padding: 6px 8px; }
+        .caller {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 12px; border-radius: 10px; cursor: pointer;
+            border: 1px solid transparent;
+        }
+        .caller[hidden] { display: none; }
+        .caller:hover { background: var(--d-sunken); }
+        .caller.is-active { background: var(--d-accent-soft); border-color: var(--d-accent); }
+        .caller .form-check-input { margin: 0; flex: none; }
+        .avatar {
+            flex: none; width: 36px; height: 36px; border-radius: 50%;
+            display: grid; place-items: center;
+            font-size: 0.8rem; font-weight: 700;
+            background: var(--d-accent-soft); color: var(--d-accent);
+        }
+        .caller-text { min-width: 0; flex: 1; }
+        .caller-name { font-weight: 600; font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .caller-email { color: var(--d-muted); font-size: 0.78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .dot { flex: none; width: 9px; height: 9px; border-radius: 50%; }
+        .dot.ok { background: var(--d-ok); }
+        .dot.warn { background: transparent; border: 2px solid var(--d-warn); }
+
+        .lookup-foot { border-top: 1px solid var(--d-border); padding: 12px 16px; background: var(--d-sunken); }
+        .lookup-foot .bulk { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+        .lookup-foot .bulk .btn { font-size: 0.78rem; }
+
+        /* ---- Right: the call ---- */
+        .call { overflow-y: auto; display: flex; flex-direction: column; }
+        .call-top {
+            display: flex; justify-content: flex-end; align-items: center; gap: 8px;
+            padding: 12px 24px;
+        }
+        .call-body { flex: 1; display: grid; place-items: center; padding: 24px 24px 64px; }
+        .call-card { width: 100%; max-width: 560px; text-align: center; }
+        .empty { color: var(--d-muted); }
+        .empty .bi { font-size: 2.6rem; display: block; margin-bottom: 12px; color: var(--d-border); }
+
+        .avatar.xl { width: 84px; height: 84px; font-size: 1.8rem; margin: 0 auto 14px; }
+        .call-name { font-size: 1.7rem; font-weight: 700; letter-spacing: -0.02em; margin: 0; }
+        .call-email { color: var(--d-muted); }
+        .badge-status {
+            display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;
+            padding: 4px 12px; border-radius: 999px; font-size: 0.8rem; font-weight: 600;
+        }
+        .badge-status.ok { background: var(--d-ok-soft); color: var(--d-ok); }
+        .badge-status.warn { background: rgba(250, 204, 21, 0.15); color: var(--d-warn); }
+
+        .verify-box {
+            margin: 28px auto 0; padding: 28px;
+            background: var(--d-surface); border: 1px solid var(--d-border); border-radius: 16px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.04);
+        }
+        .verify-label { font-size: 0.82rem; color: var(--d-muted); margin-bottom: 10px; }
+        .big-code {
+            width: 100%; max-width: 320px; margin: 0 auto;
+            font: 600 2.4rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            letter-spacing: 0.45em; text-indent: 0.45em; text-align: center;
+            padding: 14px 8px; border-radius: 12px; border: 2px solid var(--d-border);
+            background: var(--d-sunken); color: var(--d-text);
+        }
+        .big-code:focus { outline: none; border-color: var(--d-accent); box-shadow: 0 0 0 4px var(--d-accent-soft); }
+        .big-code::placeholder { color: var(--d-border); }
+        .btn-verify {
+            display: block; width: 100%; max-width: 320px; margin: 14px auto 0;
+            padding: 12px; border-radius: 12px; font-weight: 600;
+            background: var(--d-accent); border: 0; color: #fff;
+        }
+        .btn-verify:disabled { opacity: 0.4; }
+        .result {
+            margin-top: 18px; padding: 14px 16px; border-radius: 12px;
+            display: flex; align-items: center; gap: 12px; text-align: left; font-weight: 600;
+        }
+        .result .bi { font-size: 1.6rem; }
+        .result small { display: block; font-weight: 400; opacity: 0.8; }
+        .result.ok { background: var(--d-ok-soft); color: var(--d-ok); }
+        .result.bad { background: var(--d-bad-soft); color: var(--d-bad); }
+        .not-enrolled-note { color: var(--d-muted); font-size: 0.9rem; margin: 6px 0 14px; }
+
+        .account-actions { margin-top: 24px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+
+        @media (max-width: 860px) {
+            body { height: auto; }
+            .desk { grid-template-columns: 1fr; }
+            .lookup { border-right: 0; border-bottom: 1px solid var(--d-border); }
+            #employeeTable { max-height: 45vh; }
+        }
     </style>
 </head>
 <body>
-
 {% csrf_token %}
 
-<div class="dashboard-layout">
-    <!-- Employee panel: title, search, add employees, employee list -->
-    <div class="panel employee-panel">
-        <h2 class="mb-4">Employee Caller Verification</h2>
+<div class="desk">
+    <aside class="lookup" aria-label="Find caller">
+        <div class="lookup-head">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h1>Who's calling?</h1>
+                    <div class="sub"><span data-stat="enrolled">0</span> of <span data-stat="total">0</span> employees enrolled</div>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#addEmployeeModal" title="Add Employees" aria-label="Add Employees">
+                    <i class="bi bi-person-plus"></i>
+                </button>
+            </div>
+            <div class="lookup-search">
+                <i class="bi bi-search"></i>
+                <input type="text" id="searchInput" class="form-control" placeholder="Name or email, then Enter" aria-label="Search employees" autofocus>
+            </div>
+        </div>
+        <div class="list-tools">
+            <input type="checkbox" class="form-check-input m-0" id="selectAllEmployees" onchange="toggleSelectAll(this)" aria-label="Select all employees">
+            <label for="selectAllEmployees">Select all</label>
+            <span id="selectedCount" class="ms-auto"></span>
+        </div>
+        <div id="employeeTable" role="listbox" aria-label="Employees"></div>
+        <div class="lookup-foot">
+            <div class="bulk mb-2">
+                <button type="button" class="btn btn-sm btn-outline-primary bulk-action-btn" onclick="bulkEnrollSelected()" disabled>Enroll</button>
+                <button type="button" class="btn btn-sm btn-outline-warning bulk-action-btn" onclick="bulkReenrollSelected()" disabled>Re-enroll</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary bulk-action-btn" onclick="bulkUnenrollSelected()" disabled>Unenroll</button>
+                <button type="button" class="btn btn-sm btn-outline-danger bulk-action-btn" onclick="bulkDeleteSelected()" disabled>Delete</button>
+            </div>
+            <a href="{% url 'verify:export_employees' %}" id="exportEmployeesBtn" class="btn btn-sm btn-link text-decoration-none p-0" title="Export All Employees (CSV)">
+                <i class="bi bi-download"></i> <span id="exportEmployeesLabel">Export All Employees (CSV)</span>
+            </a>
+        </div>
+    </aside>
 
-        <div class="d-flex gap-2 mb-4">
-            <input type="text" id="searchInput" class="form-control" placeholder="Search employees by name or email...">
-            <button type="button" class="btn btn-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#addEmployeeModal" title="Add Employees" aria-label="Add Employees">
-                <i class="bi bi-person-plus-fill"></i>
+    <main class="call">
+        <div class="call-top">
+            <button type="button" id="darkModeToggle" class="btn btn-sm btn-outline-secondary" onclick="toggleDarkMode()">
+                <i id="darkModeIcon" class="bi bi-moon-stars-fill"></i>
             </button>
         </div>
-
-        <div class="table-responsive">
-        <table class="table table-hover align-middle">
-            <thead>
-                <tr>
-                    <th class="select-col">
-                        <input type="checkbox" class="form-check-input" id="selectAllEmployees" onchange="toggleSelectAll(this)" aria-label="Select all employees">
-                    </th>
-                    <th>Employee</th>
-                    <th class="mfa-status-cell text-center">MFA Status</th>
-                    <th>Management</th>
-                    <th>Verify Caller</th>
-                    <th class="delete-col text-center">Delete</th>
-                </tr>
-            </thead>
-            <tbody id="employeeTable">
-                {% for user in users %}
-                <tr data-user-id="{{ user.id }}">
-                    <td class="select-col">
-                        <input type="checkbox" class="form-check-input employee-select-checkbox" data-user-id="{{ user.id }}" onchange="toggleEmployeeSelection({{ user.id }}, this)" aria-label="Select {{ user.get_full_name|default:user.username }}">
-                    </td>
-                    <td>
-                        <strong>{{ user.get_full_name|default:user.username }}</strong><br>
-                        <small class="text-muted">{{ user.email }}</small>
-                    </td>
-                    <td class="mfa-status-cell text-center">
-                        {% if user.employeemfa.is_enrolled %}
-                            <i class="bi bi-check-circle-fill text-success" role="img" title="Enrolled" aria-label="Enrolled"></i>
-                        {% else %}
-                            <i class="bi bi-exclamation-triangle-fill text-warning" role="img" title="Not Enrolled" aria-label="Not Enrolled"></i>
-                        {% endif %}
-                    </td>
-                    <td class="management-cell">
-                        {% if user.employeemfa.is_enrolled %}
-                            <!-- Regenerates the secret & sends new email -->
-                            <button onclick="triggerEnrollment({{ user.id }}, true)" class="btn btn-sm btn-outline-warning">Regenerate QR</button>
-                            <!-- Clears enrollment, keeps the account -->
-                            <button onclick="unenrollEmployee({{ user.id }})" class="btn btn-sm btn-outline-danger">Unenroll</button>
-                        {% else %}
-                            <!-- Standard initial enrollment -->
-                            <button onclick="triggerEnrollment({{ user.id }}, false)" class="btn btn-sm btn-primary">Email QR Code</button>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <!-- Verification form (only works if enrolled) -->
-                        <div class="input-group input-group-sm" style="max-width: 250px;">
-                            <input type="text" id="code_{{ user.id }}" class="form-control" placeholder="6-Digit Code" maxlength="6" {% if not user.employeemfa.is_enrolled %}disabled{% endif %}>
-                            <button onclick="verifyCode({{ user.id }})" class="btn btn-outline-success" {% if not user.employeemfa.is_enrolled %}disabled{% endif %}>Verify</button>
-                        </div>
-                    </td>
-                    <td class="delete-col text-center">
-                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteEmployee({{ user.id }})" title="Delete employee" aria-label="Delete {{ user.get_full_name|default:user.username }}">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="call-body">
+            <div class="call-card" id="callPane" aria-live="polite"></div>
         </div>
-    </div>
-
-    <!-- Management panel: persistent tool panel, stays in view while the employee list scrolls -->
-    <div class="panel management-panel">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h5 class="mb-0 fw-semibold">Management</h5>
-            <button type="button" id="darkModeToggle" class="btn btn-outline-secondary btn-sm" onclick="toggleDarkMode()" title="Dark Mode" aria-label="Switch to dark mode">
-                <i class="bi bi-moon-stars-fill" id="darkModeIcon"></i>
-            </button>
-        </div>
-
-        <a href="{% url 'verify:export_employees' %}" id="exportEmployeesBtn" class="btn btn-outline-secondary w-100 mgmt-action-btn mb-3" title="Export All Employees (CSV)">
-            <i class="bi bi-download"></i> <span id="exportEmployeesLabel">Export All Employees (CSV)</span>
-        </a>
-
-        <hr>
-
-        <div class="fw-semibold mb-2">Bulk Actions</div>
-        <div class="d-grid gap-2">
-            <button type="button" class="btn btn-outline-primary mgmt-action-btn bulk-action-btn" onclick="bulkEnrollSelected()" disabled>Enroll Selected</button>
-            <button type="button" class="btn btn-outline-warning mgmt-action-btn bulk-action-btn" onclick="bulkReenrollSelected()" disabled>Re-Enroll Selected</button>
-            <button type="button" class="btn btn-outline-secondary mgmt-action-btn bulk-action-btn" onclick="bulkUnenrollSelected()" disabled>Unenroll Selected</button>
-            <button type="button" class="btn btn-outline-danger mgmt-action-btn bulk-action-btn" onclick="bulkDeleteSelected()" disabled>Delete Selected</button>
-        </div>
-        <div id="selectedCount" class="text-muted small mt-2"></div>
-
-        <small class="text-muted d-block mt-3">
-            Bulk actions and CSV export apply to the employees checked in the list &mdash; if none are checked, export covers everyone.
-            Add new employees, individually or via CSV, with the Add Employees button next to the search bar.
-        </small>
-    </div>
+    </main>
 </div>
 
 <!-- Add Employees Modal (individual + CSV import) -->
@@ -239,9 +305,103 @@
         </div>
     </div>
 </div>
+{{ employees|json_script:"employees-data" }}
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+    // Call Desk: find the caller in the list on the left, verify them in the
+    // focused pane on the right. Rows are rendered client-side from the
+    // employees-data JSON (same shape the add/import endpoints return).
+    let activeUserId = null;
+    // Last verification outcome for the active caller, cleared when the caller changes.
+    let lastResult = null;
+
+    function renderCallPane() {
+        const pane = document.getElementById('callPane');
+        const row = activeUserId !== null ? getRow(activeUserId) : null;
+        if (!row) {
+            pane.innerHTML = `<div class="empty"><i class="bi bi-telephone-inbound"></i>
+                Search for the caller and select them to verify their code.</div>`;
+            return;
+        }
+        const id = activeUserId;
+        const name = row.dataset.name;
+        const email = row.dataset.email;
+        const enrolled = row.dataset.enrolled === '1';
+
+        const resultHtml = lastResult
+            ? (lastResult.ok
+                ? `<div class="result ok"><i class="bi bi-shield-check"></i><div>Caller verified<small>${escapeHtml(name)} at ${lastResult.time}. Safe to proceed with the reset.</small></div></div>`
+                : `<div class="result bad"><i class="bi bi-shield-x"></i><div>Not verified<small>${escapeHtml(lastResult.message)}</small></div></div>`)
+            : '';
+
+        const verifyHtml = enrolled
+            ? `<div class="verify-box">
+                    <div class="verify-label">Ask the caller to read the 6-digit code from their authenticator app</div>
+                    <input type="text" id="code_${id}" class="big-code" placeholder="••••••" maxlength="6" inputmode="numeric" autocomplete="off" aria-label="6-digit code for ${escapeHtml(name)}">
+                    <button class="btn btn-verify" data-verify-for="${id}" onclick="verifyCode(${id})"><i class="bi bi-shield-lock"></i> Verify caller</button>
+                    ${resultHtml}
+               </div>`
+            : `<div class="verify-box">
+                    <div class="not-enrolled-note">${escapeHtml(name)} hasn't set up an authenticator yet, so they can't be verified by code.</div>
+                    <button class="btn btn-verify" onclick="triggerEnrollment(${id}, false)"><i class="bi bi-envelope-arrow-up"></i> Email enrollment QR code</button>
+               </div>`;
+
+        const accountActions = enrolled
+            ? `<button class="btn btn-sm btn-outline-warning" onclick="triggerEnrollment(${id}, true)"><i class="bi bi-arrow-repeat"></i> Regenerate QR</button>
+               <button class="btn btn-sm btn-outline-secondary" onclick="unenrollEmployee(${id})"><i class="bi bi-slash-circle"></i> Unenroll</button>`
+            : '';
+
+        pane.innerHTML = `
+            <div class="avatar xl">${escapeHtml(initialsFor(name))}</div>
+            <h2 class="call-name">${escapeHtml(name)}</h2>
+            <div class="call-email">${escapeHtml(email)}</div>
+            ${enrolled
+                ? '<span class="badge-status ok"><i class="bi bi-check-circle-fill"></i> Enrolled</span>'
+                : '<span class="badge-status warn"><i class="bi bi-exclamation-triangle-fill"></i> Not enrolled</span>'}
+            ${verifyHtml}
+            <div class="account-actions">
+                ${accountActions}
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteEmployee(${id})"><i class="bi bi-trash"></i> Delete</button>
+            </div>`;
+    }
+
+    function selectCaller(userId) {
+        if (activeUserId !== userId) lastResult = null;
+        activeUserId = userId;
+        document.querySelectorAll('#employeeTable .caller').forEach(el => {
+            const active = parseInt(el.dataset.userId, 10) === userId;
+            el.classList.toggle('is-active', active);
+            el.setAttribute('aria-selected', active);
+        });
+        renderCallPane();
+        document.getElementById(`code_${userId}`)?.focus();
+    }
+
+    function buildEmployeeRowHtml(user) {
+        const name = displayNameFor(user);
+        const active = user.id === activeUserId;
+        return `<div class="caller employee-row${active ? ' is-active' : ''}" role="option" aria-selected="${active}" tabindex="0"
+                     data-user-id="${user.id}" data-name="${escapeHtml(name)}" data-email="${escapeHtml(user.email)}" data-enrolled="${user.is_enrolled ? 1 : 0}"
+                     onclick="selectCaller(${user.id})" onkeydown="if (event.key === 'Enter') selectCaller(${user.id})">
+            <input type="checkbox" class="form-check-input employee-select-checkbox" data-user-id="${user.id}"
+                   onclick="event.stopPropagation()" onchange="toggleEmployeeSelection(${user.id}, this)" aria-label="Select ${escapeHtml(name)}">
+            <div class="avatar">${escapeHtml(initialsFor(name))}</div>
+            <div class="caller-text">
+                <div class="caller-name">${escapeHtml(name)}</div>
+                <div class="caller-email">${escapeHtml(user.email)}</div>
+            </div>
+            <span class="dot ${user.is_enrolled ? 'ok' : 'warn'}" title="${user.is_enrolled ? 'Enrolled' : 'Not enrolled'}"></span>
+        </div>`;
+    }
+
+    // Enter in the search box opens the first matching caller.
+    document.getElementById('searchInput').addEventListener('keydown', function(e) {
+        if (e.key !== 'Enter') return;
+        const first = getAllRows().find(row => !row.hidden);
+        if (first) selectCaller(parseInt(first.dataset.userId, 10));
+    });
+
     // Dark mode toggle (persisted across visits; theme is applied pre-paint in <head>)
     const THEME_KEY = 'helpdeskDashboardTheme';
     const darkModeToggle = document.getElementById('darkModeToggle');
@@ -259,7 +419,7 @@
     function toggleDarkMode() {
         const current = document.documentElement.getAttribute('data-bs-theme') || 'light';
         const next = current === 'dark' ? 'light' : 'dark';
-        localStorage.setItem(THEME_KEY, next);
+        try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
         applyTheme(next);
     }
 
@@ -358,16 +518,20 @@
     // Clear any stale error whenever the modal is (re)opened.
     addEmployeeModalEl.addEventListener('show.bs.modal', hideAddEmployeeError);
 
+    // ---- Row lookup ----
+    function getRow(userId) {
+        return document.querySelector(`#employeeTable .employee-row[data-user-id="${userId}"]`);
+    }
+
+    function getAllRows() {
+        return Array.from(document.querySelectorAll('#employeeTable .employee-row'));
+    }
+
     // ---- Selection tracking (for bulk actions & selection-aware export) ----
     const selectedEmployeeIds = new Set();
 
-    function getAllRowIds() {
-        return Array.from(document.querySelectorAll('#employeeTable tr[data-user-id]'))
-            .map(row => parseInt(row.dataset.userId, 10));
-    }
-
     function updateSelectionUI() {
-        const total = getAllRowIds().length;
+        const total = getAllRows().length;
         const selectedCount = selectedEmployeeIds.size;
 
         const selectAllCheckbox = document.getElementById('selectAllEmployees');
@@ -389,19 +553,35 @@
             : exportEmployeesBaseUrl;
         exportBtn.title = exportLabel;
         document.getElementById('exportEmployeesLabel').textContent = exportLabel;
+
+        updateStats();
+    }
+
+    // Summary counters: any element with data-stat="total|enrolled|pending".
+    function updateStats() {
+        const rows = getAllRows();
+        const enrolled = rows.filter(row => row.dataset.enrolled === '1').length;
+        const counts = { total: rows.length, enrolled, pending: rows.length - enrolled };
+        document.querySelectorAll('[data-stat]').forEach(el => {
+            el.textContent = counts[el.dataset.stat];
+        });
     }
 
     function toggleEmployeeSelection(userId, checkbox) {
         if (checkbox.checked) selectedEmployeeIds.add(userId);
         else selectedEmployeeIds.delete(userId);
+        getRow(userId)?.classList.toggle('is-selected', checkbox.checked);
         updateSelectionUI();
     }
 
     function toggleSelectAll(checkbox) {
-        const rowCheckboxes = document.querySelectorAll('#employeeTable .employee-select-checkbox');
-        rowCheckboxes.forEach(cb => {
+        getAllRows().forEach(row => {
+            // Select-all only covers rows currently visible after search/filter.
+            if (checkbox.checked && row.hidden) return;
+            const cb = row.querySelector('.employee-select-checkbox');
+            const userId = parseInt(row.dataset.userId, 10);
             cb.checked = checkbox.checked;
-            const userId = parseInt(cb.dataset.userId, 10);
+            row.classList.toggle('is-selected', checkbox.checked);
             if (checkbox.checked) selectedEmployeeIds.add(userId);
             else selectedEmployeeIds.delete(userId);
         });
@@ -411,6 +591,7 @@
     function clearSelection() {
         selectedEmployeeIds.clear();
         document.querySelectorAll('.employee-select-checkbox').forEach(cb => cb.checked = false);
+        getAllRows().forEach(row => row.classList.remove('is-selected'));
         updateSelectionUI();
     }
 
@@ -421,66 +602,64 @@
         return div.innerHTML;
     }
 
-    function statusIconHtml(isEnrolled) {
-        return isEnrolled
-            ? '<i class="bi bi-check-circle-fill text-success" role="img" title="Enrolled" aria-label="Enrolled"></i>'
-            : '<i class="bi bi-exclamation-triangle-fill text-warning" role="img" title="Not Enrolled" aria-label="Not Enrolled"></i>';
+    function displayNameFor(user) {
+        return (user.full_name && user.full_name.trim()) ? user.full_name : user.email;
     }
 
-    function managementButtonsHtml(userId, isEnrolled) {
-        if (isEnrolled) {
-            return `<button onclick="triggerEnrollment(${userId}, true)" class="btn btn-sm btn-outline-warning">Regenerate QR</button>
-                <button onclick="unenrollEmployee(${userId})" class="btn btn-sm btn-outline-danger">Unenroll</button>`;
-        }
-        return `<button onclick="triggerEnrollment(${userId}, false)" class="btn btn-sm btn-primary">Email QR Code</button>`;
-    }
-
-    function buildEmployeeRowHtml(user) {
-        const displayName = (user.full_name && user.full_name.trim()) ? user.full_name : user.email;
-        return `<tr data-user-id="${user.id}">
-                <td class="select-col">
-                    <input type="checkbox" class="form-check-input employee-select-checkbox" data-user-id="${user.id}" onchange="toggleEmployeeSelection(${user.id}, this)" aria-label="Select ${escapeHtml(displayName)}">
-                </td>
-                <td>
-                    <strong>${escapeHtml(displayName)}</strong><br>
-                    <small class="text-muted">${escapeHtml(user.email)}</small>
-                </td>
-                <td class="mfa-status-cell text-center">${statusIconHtml(user.is_enrolled)}</td>
-                <td class="management-cell">${managementButtonsHtml(user.id, user.is_enrolled)}</td>
-                <td>
-                    <div class="input-group input-group-sm" style="max-width: 250px;">
-                        <input type="text" id="code_${user.id}" class="form-control" placeholder="6-Digit Code" maxlength="6" ${user.is_enrolled ? '' : 'disabled'}>
-                        <button onclick="verifyCode(${user.id})" class="btn btn-outline-success" ${user.is_enrolled ? '' : 'disabled'}>Verify</button>
-                    </div>
-                </td>
-                <td class="delete-col text-center">
-                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteEmployee(${user.id})" title="Delete employee" aria-label="Delete ${escapeHtml(displayName)}">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </td>
-            </tr>`;
+    function initialsFor(name) {
+        const parts = (name || '').replace(/@.*/, '').split(/[\s._-]+/).filter(Boolean);
+        return ((parts[0]?.[0] || '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase() || '?';
     }
 
     function appendEmployeeRow(user) {
         document.getElementById('employeeTable').insertAdjacentHTML('beforeend', buildEmployeeRowHtml(user));
+        applyFilters();
         updateSelectionUI();
     }
 
+    // Re-renders a row from its data attributes, keeping its selection state.
+    function rebuildRow(row, isEnrolled) {
+        const userId = parseInt(row.dataset.userId, 10);
+        row.insertAdjacentHTML('afterend', buildEmployeeRowHtml({
+            id: userId,
+            full_name: row.dataset.name,
+            email: row.dataset.email,
+            is_enrolled: isEnrolled,
+        }));
+        const fresh = row.nextElementSibling;
+        row.remove();
+        if (selectedEmployeeIds.has(userId)) {
+            fresh.classList.add('is-selected');
+            fresh.querySelector('.employee-select-checkbox').checked = true;
+        }
+        return fresh;
+    }
+
     function removeEmployeeRow(userId) {
-        const row = document.querySelector(`tr[data-user-id="${userId}"]`);
+        const row = getRow(userId);
         if (row) row.remove();
         selectedEmployeeIds.delete(userId);
+        if (userId === activeUserId) {
+            activeUserId = null;
+            lastResult = null;
+            renderCallPane();
+        }
     }
 
     function updateEmployeeRowEnrolled(userId, isEnrolled) {
-        const row = document.querySelector(`tr[data-user-id="${userId}"]`);
+        const row = getRow(userId);
         if (!row) return;
-        row.querySelector('.mfa-status-cell').innerHTML = statusIconHtml(isEnrolled);
-        row.querySelector('.management-cell').innerHTML = managementButtonsHtml(userId, isEnrolled);
-        const codeInput = row.querySelector(`#code_${userId}`);
-        const verifyBtn = row.querySelector(`button[onclick="verifyCode(${userId})"]`);
-        if (codeInput) codeInput.disabled = !isEnrolled;
-        if (verifyBtn) verifyBtn.disabled = !isEnrolled;
+        row.dataset.enrolled = isEnrolled ? '1' : '0';
+        rebuildRow(row, isEnrolled);
+        if (userId === activeUserId) {
+            lastResult = null;
+            renderCallPane();
+        }
+        document.querySelectorAll(`#code_${userId}, [data-verify-for="${userId}"]`).forEach(el => {
+            el.disabled = !isEnrolled;
+        });
+        applyFilters();
+        updateStats();
     }
 
     // 1. Add New Employee (individually, from the Add Employees modal)
@@ -618,6 +797,18 @@
         const codeField = document.getElementById(`code_${userId}`);
         const codeInput = codeField.value;
 
+        // The result shows inline in the call pane for the active caller;
+        // anything else (e.g. caller changed mid-request) falls back to a notice.
+        const report = (ok, message, title) => {
+            if (userId !== activeUserId) {
+                customNotice(message, { title });
+                return;
+            }
+            lastResult = { ok, message, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
+            renderCallPane();
+            document.getElementById(`code_${userId}`)?.focus();
+        };
+
         fetch(`${checkUrlBase}${userId}/`, {
             method: 'POST',
             headers: {
@@ -629,14 +820,21 @@
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
-                customNotice('Caller Verified', { title: 'Verify Caller' });
+                report(true, 'Caller Verified', 'Verify Caller');
             } else {
-                customNotice(data.message, { title: 'Caller Not Verified' });
+                report(false, data.message, 'Caller Not Verified');
             }
             codeField.value = '';
         })
-        .catch(() => customNotice('Failed to verify caller.', { title: 'Caller Not Verified' }));
+        .catch(() => report(false, 'Failed to verify caller.', 'Caller Not Verified'));
     }
+
+    // Submit a code with Enter from any code input.
+    document.addEventListener('keydown', function(e) {
+        if (e.key !== 'Enter' || !e.target.id || !e.target.id.startsWith('code_')) return;
+        e.preventDefault();
+        verifyCode(parseInt(e.target.id.slice(5), 10));
+    });
 
     // 5. Import Employees (CSV) - from the Add Employees modal
     function importEmployeesCsv() {
@@ -765,19 +963,27 @@
             .catch(() => customNotice('Bulk delete failed.', { title: 'Delete Selected Employees' }));
     }
 
-    // Search logic
-    document.getElementById('searchInput').addEventListener('keyup', function() {
-        let filter = this.value.toLowerCase();
-        let rows = document.querySelectorAll('#employeeTable tr');
+    // Search
+    const searchInput = document.getElementById('searchInput');
 
-        rows.forEach(row => {
-            let text = row.innerText.toLowerCase();
-            row.style.display = text.includes(filter) ? '' : 'none';
+    function applyFilters() {
+        const filter = searchInput.value.toLowerCase();
+        getAllRows().forEach(row => {
+            const text = `${row.dataset.name} ${row.dataset.email}`.toLowerCase();
+            row.hidden = !text.includes(filter);
         });
-    });
+    }
+
+    searchInput.addEventListener('input', applyFilters);
+
+    // Initial render from the server-provided employee list
+    document.getElementById('employeeTable').innerHTML =
+        JSON.parse(document.getElementById('employees-data').textContent).map(buildEmployeeRowHtml).join('');
 
     // Initialize selection-dependent UI (select-all state, disabled bulk buttons, export label)
+    applyFilters();
     updateSelectionUI();
+    renderCallPane();
 </script>
 </body>
 </html>

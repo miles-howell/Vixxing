@@ -301,31 +301,30 @@ class ExportEmployeesCsvTests(TestCase):
         self.assertNotIn('export-b@example.com', content)
 
 
-class DashboardPrototypeTests(TestCase):
+
+class DashboardTests(TestCase):
     def setUp(self):
         self.admin = User.objects.create_superuser(
             username='admin', email='admin@example.com', password='password'
         )
         self.client.force_login(self.admin)
 
-    def test_each_prototype_renders_employees_without_secrets(self):
+    def test_lists_employees_without_secrets_or_staff(self):
         make_employee('ada@example.com', enrolled=True, secret='JBSWY3DPEHPK3PXP')
         make_employee('bob@example.com')
 
-        for layout in ('console', 'call-desk', 'cards'):
-            with self.subTest(layout=layout):
-                response = self.client.get(reverse('verify:dashboard_prototype', args=[layout]))
-                self.assertEqual(response.status_code, 200)
-                self.assertContains(response, 'ada@example.com')
-                self.assertContains(response, 'bob@example.com')
-                self.assertNotContains(response, 'JBSWY3DPEHPK3PXP')
-                self.assertNotContains(response, 'admin@example.com')
+        response = self.client.get(reverse('verify:dashboard'))
 
-    def test_unknown_prototype_is_404(self):
-        response = self.client.get(reverse('verify:dashboard_prototype', args=['nope']))
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            [(e['email'], e['is_enrolled']) for e in response.context['employees']],
+            [('ada@example.com', True), ('bob@example.com', False)],
+        )
+        self.assertContains(response, 'ada@example.com')
+        self.assertNotContains(response, 'JBSWY3DPEHPK3PXP')
+        self.assertNotContains(response, 'admin@example.com')
 
     def test_requires_staff(self):
         self.client.logout()
-        response = self.client.get(reverse('verify:dashboard_prototype', args=['cards']))
+        response = self.client.get(reverse('verify:dashboard'))
         self.assertEqual(response.status_code, 302)
