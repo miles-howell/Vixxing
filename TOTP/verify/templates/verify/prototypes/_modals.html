@@ -1,0 +1,75 @@
+<!-- Add Employees Modal (individual + CSV import) -->
+<div class="modal fade" id="addEmployeeModal" tabindex="-1" aria-labelledby="addEmployeeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addEmployeeModalLabel">Add Employees</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="addEmployeeError" class="alert alert-danger d-none" role="alert"></div>
+
+                <h6 class="fw-semibold">Add One Employee</h6>
+                <form id="addEmployeeForm" class="mb-4">
+                    <div class="d-flex flex-wrap gap-2">
+                        <input type="text" id="newEmpFirstName" class="form-control" placeholder="First Name" style="flex: 1 1 150px;">
+                        <input type="text" id="newEmpLastName" class="form-control" placeholder="Last Name" style="flex: 1 1 150px;">
+                        <input type="email" id="newEmpEmail" class="form-control" placeholder="Email Address (Required)" style="flex: 2 1 220px;">
+                        <button type="submit" class="btn btn-primary text-nowrap">Add Employee</button>
+                    </div>
+                </form>
+
+                <hr>
+
+                <h6 class="fw-semibold">Import from CSV</h6>
+                <div class="d-flex flex-wrap gap-2">
+                    <input type="file" id="csvImportFile" accept=".csv" class="form-control" style="flex: 1 1 220px;">
+                    <button type="button" onclick="importEmployeesCsv()" class="btn btn-outline-primary text-nowrap">
+                        <i class="bi bi-upload"></i> Import CSV
+                    </button>
+                </div>
+                <small class="text-muted d-block mt-2">
+                    Import/export only covers names and email addresses &mdash; MFA secrets are never included.
+                    Imported employees are added as "Not Enrolled"; enroll them individually or with Enroll Selected on the dashboard.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Custom centered confirmation modal (replaces native browser confirm() popups) -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmModalTitle">Please Confirm</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmModalMessage" class="mb-0"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="confirmModalConfirmBtn" class="btn btn-primary">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Custom centered notice modal (replaces native browser alert() popups) -->
+<div class="modal fade" id="noticeModal" tabindex="-1" aria-labelledby="noticeModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="noticeModalTitle">Notice</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="noticeModalMessage" class="mb-0"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>

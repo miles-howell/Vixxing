@@ -12,7 +12,7 @@ from django.core.mail import EmailMultiAlternatives
 from email.message import MIMEPart
 from django.template.loader import render_to_string
 from .models import EmployeeMFA
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, Http404
 from django.contrib.auth.models import User
 from django.contrib.admin.views.decorators import staff_member_required
 from django.views.decorators.http import require_POST
@@ -327,6 +327,31 @@ def helpdesk_dashboard(request):
     users = User.objects.filter(groups__name='Employees').select_related('employeemfa')
 
     return render(request, 'verify/dashboard.html', {'users': users})
+
+
+# Alternative dashboard layouts under evaluation. Each is a full template in
+# templates/verify/prototypes/ that reuses the same JSON endpoints as the
+# production dashboard; nothing here changes behavior, only presentation.
+DASHBOARD_PROTOTYPES = {
+    'console': 'Console',
+    'call-desk': 'Call Desk',
+    'cards': 'Cards',
+}
+
+
+@staff_member_required
+def dashboard_prototype(request, layout):
+    if layout not in DASHBOARD_PROTOTYPES:
+        raise Http404('Unknown dashboard prototype.')
+    users = User.objects.filter(groups__name='Employees').select_related('employeemfa').order_by('last_name', 'first_name')
+
+    # Rows are rendered client-side from the same summary shape the add/import
+    # endpoints return, so each prototype defines its row markup exactly once.
+    return render(request, f'verify/prototypes/{layout}.html', {
+        'employees': [_user_summary(user, _is_enrolled(user)) for user in users],
+        'layout': layout,
+        'prototypes': DASHBOARD_PROTOTYPES,
+    })
 
 
 @staff_member_required

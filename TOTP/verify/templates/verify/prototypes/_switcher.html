@@ -1,0 +1,19 @@
+<!-- Prototype switcher: jump between the production dashboard and each candidate layout -->
+<nav class="prototype-switcher" aria-label="Dashboard layout prototypes">
+    <span class="prototype-switcher-label">Layout prototype</span>
+    <a href="{% url 'verify:dashboard' %}">Current</a>
+    {% for slug, name in prototypes.items %}
+        <a href="{% url 'verify:dashboard_prototype' slug %}"{% if slug == layout %} aria-current="page"{% endif %}>{{ name }}</a>
+    {% endfor %}
+</nav>
+<style>
+    .prototype-switcher {
+        display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+        padding: 6px 16px; font-size: 0.8rem;
+        background: #111827; color: #9ca3af;
+    }
+    .prototype-switcher-label { margin-right: 8px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+    .prototype-switcher a { color: #e5e7eb; text-decoration: none; padding: 2px 10px; border-radius: 999px; }
+    .prototype-switcher a:hover { background: #1f2937; }
+    .prototype-switcher a[aria-current="page"] { background: #f9fafb; color: #111827; font-weight: 600; }
+</style>

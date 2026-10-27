@@ -6,6 +6,7 @@ app_name = 'verify'
 
 urlpatterns = [
     path('', views.helpdesk_dashboard, name='dashboard'),
+    path('prototypes/<slug:layout>/', views.dashboard_prototype, name='dashboard_prototype'),
     path('enroll/<int:user_id>/', views.generate_enrollment_qr, name='enroll_user'),
     path('check/<int:user_id>/', views.verify_caller, name='verify_caller'),
     path('add-employee/', views.add_employee, name='add_employee'),

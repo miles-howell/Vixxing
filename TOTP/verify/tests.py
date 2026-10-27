@@ -299,3 +299,33 @@ class ExportEmployeesCsvTests(TestCase):
 
         self.assertIn('export-a@example.com', content)
         self.assertNotIn('export-b@example.com', content)
+
+
+class DashboardPrototypeTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(
+            username='admin', email='admin@example.com', password='password'
+        )
+        self.client.force_login(self.admin)
+
+    def test_each_prototype_renders_employees_without_secrets(self):
+        make_employee('ada@example.com', enrolled=True, secret='JBSWY3DPEHPK3PXP')
+        make_employee('bob@example.com')
+
+        for layout in ('console', 'call-desk', 'cards'):
+            with self.subTest(layout=layout):
+                response = self.client.get(reverse('verify:dashboard_prototype', args=[layout]))
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, 'ada@example.com')
+                self.assertContains(response, 'bob@example.com')
+                self.assertNotContains(response, 'JBSWY3DPEHPK3PXP')
+                self.assertNotContains(response, 'admin@example.com')
+
+    def test_unknown_prototype_is_404(self):
+        response = self.client.get(reverse('verify:dashboard_prototype', args=['nope']))
+        self.assertEqual(response.status_code, 404)
+
+    def test_requires_staff(self):
+        self.client.logout()
+        response = self.client.get(reverse('verify:dashboard_prototype', args=['cards']))
+        self.assertEqual(response.status_code, 302)

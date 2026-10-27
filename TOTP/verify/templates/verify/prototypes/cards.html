@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Helpdesk MFA Directory</title>
+    {% include 'verify/prototypes/_theme_init.html' %}
+    <style>
+        /* Cards: a friendly directory of people. Soft paper surfaces, teal accent,
+           enrollment status filters, secondary actions tucked into a per-card menu. */
+        :root, [data-bs-theme="light"] {
+            --k-bg: #f6f4ef;
+            --k-surface: #fffdf9;
+            --k-border: #e8e4da;
+            --k-text: #1f2a2e;
+            --k-muted: #6b7478;
+            --k-accent: #0f766e;
+            --k-accent-ink: #ffffff;
+            --k-accent-soft: #ccfbf1;
+            --k-ok: #0f766e;
+            --k-warn: #c2410c;
+            --k-warn-soft: #ffedd5;
+            --k-shadow: 0 1px 2px rgba(31, 42, 46, 0.05), 0 6px 18px rgba(31, 42, 46, 0.06);
+        }
+        [data-bs-theme="dark"] {
+            --k-bg: #0d1719;
+            --k-surface: #142124;
+            --k-border: #22363a;
+            --k-text: #e6efee;
+            --k-muted: #8fa3a3;
+            --k-accent: #2dd4bf;
+            --k-accent-ink: #042f2b;
+            --k-accent-soft: rgba(45, 212, 191, 0.14);
+            --k-ok: #2dd4bf;
+            --k-warn: #fb923c;
+            --k-warn-soft: rgba(251, 146, 60, 0.14);
+            --k-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+        body {
+            background: var(--k-bg); color: var(--k-text);
+            --bs-body-bg: var(--k-surface); --bs-body-color: var(--k-text);
+            --bs-border-color: var(--k-border);
+        }
+        .wrap { max-width: 1280px; margin: 0 auto; padding: 32px 20px 64px; }
+
+        .hero { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+        .hero h1 { font-size: 1.9rem; font-weight: 800; letter-spacing: -0.03em; margin: 0; }
+        .hero p { color: var(--k-muted); margin: 4px 0 0; }
+        .hero-actions { margin-left: auto; display: flex; gap: 8px; }
+        .btn-accent { background: var(--k-accent); border-color: var(--k-accent); color: var(--k-accent-ink); border-radius: 999px; padding-inline: 16px; font-weight: 600; }
+        .btn-accent:hover { background: var(--k-accent); color: var(--k-accent-ink); filter: brightness(1.08); }
+        .btn-round { border-radius: 999px; }
+
+        .controls {
+            display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+            padding: 12px; margin-bottom: 20px;
+            background: var(--k-surface); border: 1px solid var(--k-border); border-radius: 16px; box-shadow: var(--k-shadow);
+        }
+        .controls .search { flex: 1 1 260px; position: relative; }
+        .controls .search .form-control { border-radius: 999px; padding-left: 38px; border-color: var(--k-border); background: var(--k-bg); }
+        .controls .search .bi { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--k-muted); }
+        .segmented { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--k-bg); border: 1px solid var(--k-border); }
+        .segmented button {
+            border: 0; background: transparent; color: var(--k-muted);
+            padding: 5px 14px; border-radius: 999px; font-size: 0.85rem; font-weight: 600;
+        }
+        .segmented button[aria-pressed="true"] { background: var(--k-surface); color: var(--k-text); box-shadow: var(--k-shadow); }
+        .segmented .count { opacity: 0.65; font-variant-numeric: tabular-nums; margin-left: 4px; }
+
+        .selection-bar {
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+            margin: -8px 0 20px; font-size: 0.875rem; color: var(--k-muted);
+        }
+        .selection-bar .btn { border-radius: 999px; }
+
+        .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+        .card-emp {
+            position: relative; display: flex; flex-direction: column;
+            padding: 20px; border-radius: 18px;
+            background: var(--k-surface); border: 1px solid var(--k-border); box-shadow: var(--k-shadow);
+            transition: border-color 0.12s ease, transform 0.12s ease;
+        }
+        .card-emp[hidden] { display: none; }
+        /* Lift the card whose menu is open so the menu isn't covered by the next card */
+        .card-emp:has(.dropdown-menu.show) { z-index: 5; }
+        .card-emp:hover { transform: translateY(-1px); }
+        .card-emp.is-selected { border-color: var(--k-accent); box-shadow: 0 0 0 3px var(--k-accent-soft); }
+        .card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+        .status {
+            font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 999px;
+            display: inline-flex; align-items: center; gap: 5px;
+        }
+        .status.ok { background: var(--k-accent-soft); color: var(--k-ok); }
+        .status.warn { background: var(--k-warn-soft); color: var(--k-warn); }
+        .avatar {
+            width: 52px; height: 52px; border-radius: 16px; margin-bottom: 12px;
+            display: grid; place-items: center; font-weight: 800; font-size: 1.1rem;
+            color: var(--k-accent-ink); background: var(--k-accent);
+        }
+        .card-emp[data-enrolled="0"] .avatar { background: var(--k-border); color: var(--k-muted); }
+        .emp-name { font-weight: 700; font-size: 1.05rem; line-height: 1.2; overflow-wrap: anywhere; }
+        .emp-email { color: var(--k-muted); font-size: 0.85rem; overflow-wrap: anywhere; margin-bottom: 16px; }
+        .card-foot { margin-top: auto; display: flex; gap: 6px; align-items: center; }
+        .card-foot .code:placeholder-shown { letter-spacing: normal; }
+        .card-foot .code { border-radius: 999px; text-align: center; letter-spacing: 0.3em; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+        .card-foot .btn-verify { border-radius: 999px; white-space: nowrap; }
+        .kebab { border: 0; background: transparent; color: var(--k-muted); width: 32px; height: 32px; border-radius: 50%; }
+        .kebab:hover { background: var(--k-bg); color: var(--k-text); }
+
+        .empty { text-align: center; color: var(--k-muted); padding: 64px 20px; }
+        .empty .bi { font-size: 2.2rem; display: block; margin-bottom: 8px; }
+        .wrap:has(.card-emp:not([hidden])) .empty { display: none; }
+    </style>
+</head>
+<body>
+{% csrf_token %}
+{% include 'verify/prototypes/_switcher.html' %}
+
+<div class="wrap">
+    <header class="hero">
+        <div>
+            <h1>Employee directory</h1>
+            <p>Verify callers, send enrollment QR codes, and manage MFA in one place.</p>
+        </div>
+        <div class="hero-actions">
+            <button type="button" id="darkModeToggle" class="btn btn-outline-secondary btn-round" onclick="toggleDarkMode()">
+                <i id="darkModeIcon" class="bi bi-moon-stars-fill"></i>
+            </button>
+            <a href="{% url 'verify:export_employees' %}" id="exportEmployeesBtn" class="btn btn-outline-secondary btn-round" title="Export All Employees (CSV)">
+                <i class="bi bi-download"></i> <span id="exportEmployeesLabel" class="d-none d-md-inline">Export All Employees (CSV)</span>
+            </a>
+            <button type="button" class="btn btn-accent" data-bs-toggle="modal" data-bs-target="#addEmployeeModal">
+                <i class="bi bi-plus-lg"></i> Add employees
+            </button>
+        </div>
+    </header>
+
+    <section class="controls">
+        <div class="search">
+            <i class="bi bi-search"></i>
+            <input type="text" id="searchInput" class="form-control" placeholder="Search by name or email" aria-label="Search employees">
+        </div>
+        <div class="segmented" role="group" aria-label="Filter by enrollment">
+            <button type="button" data-filter="all" aria-pressed="true">All<span class="count" data-stat="total">0</span></button>
+            <button type="button" data-filter="enrolled" aria-pressed="false">Enrolled<span class="count" data-stat="enrolled">0</span></button>
+            <button type="button" data-filter="pending" aria-pressed="false">Not enrolled<span class="count" data-stat="pending">0</span></button>
+        </div>
+    </section>
+
+    <div class="selection-bar">
+        <div class="form-check m-0 me-2">
+            <input type="checkbox" class="form-check-input" id="selectAllEmployees" onchange="toggleSelectAll(this)">
+            <label class="form-check-label" for="selectAllEmployees">Select visible</label>
+        </div>
+        <span id="selectedCount" class="me-2"></span>
+        <button type="button" class="btn btn-sm btn-outline-primary bulk-action-btn" onclick="bulkEnrollSelected()" disabled>Enroll</button>
+        <button type="button" class="btn btn-sm btn-outline-warning bulk-action-btn" onclick="bulkReenrollSelected()" disabled>Re-enroll</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary bulk-action-btn" onclick="bulkUnenrollSelected()" disabled>Unenroll</button>
+        <button type="button" class="btn btn-sm btn-outline-danger bulk-action-btn" onclick="bulkDeleteSelected()" disabled>Delete</button>
+    </div>
+
+    <div class="cards" id="employeeTable"></div>
+    <div class="empty"><i class="bi bi-people"></i>No employees match.</div>
+</div>
+
+{% include 'verify/prototypes/_modals.html' %}
+{{ employees|json_script:"employees-data" }}
+
+<script>
+    let enrollmentFilter = 'all';
+
+    window.layout = {
+        buildRowHtml(user) {
+            const name = displayNameFor(user);
+            const enrolled = user.is_enrolled;
+            const menuItems = enrolled
+                ? `<li><button class="dropdown-item" onclick="triggerEnrollment(${user.id}, true)"><i class="bi bi-arrow-repeat me-2"></i>Regenerate QR</button></li>
+                   <li><button class="dropdown-item" onclick="unenrollEmployee(${user.id})"><i class="bi bi-slash-circle me-2"></i>Unenroll</button></li>`
+                : `<li><button class="dropdown-item" onclick="triggerEnrollment(${user.id}, false)"><i class="bi bi-envelope me-2"></i>Email QR code</button></li>`;
+            const foot = enrolled
+                ? `<input type="text" id="code_${user.id}" class="form-control form-control-sm code" placeholder="Code" maxlength="6" inputmode="numeric" autocomplete="off" aria-label="6-digit code for ${escapeHtml(name)}">
+                   <button class="btn btn-sm btn-success btn-verify" data-verify-for="${user.id}" onclick="verifyCode(${user.id})">Verify</button>`
+                : `<button class="btn btn-sm btn-outline-secondary btn-round flex-grow-1" onclick="triggerEnrollment(${user.id}, false)"><i class="bi bi-envelope"></i> Email QR code</button>`;
+            return `<article class="card-emp employee-row" data-user-id="${user.id}" data-name="${escapeHtml(name)}" data-email="${escapeHtml(user.email)}" data-enrolled="${enrolled ? 1 : 0}">
+                <div class="card-top">
+                    <input type="checkbox" class="form-check-input m-0 employee-select-checkbox" data-user-id="${user.id}" onchange="toggleEmployeeSelection(${user.id}, this)" aria-label="Select ${escapeHtml(name)}">
+                    <span class="status ${enrolled ? 'ok' : 'warn'}">${enrolled ? '<i class="bi bi-check-circle-fill"></i> Enrolled' : '<i class="bi bi-hourglass-split"></i> Not enrolled'}</span>
+                </div>
+                <div class="avatar">${escapeHtml(initialsFor(name))}</div>
+                <div class="emp-name">${escapeHtml(name)}</div>
+                <div class="emp-email">${escapeHtml(user.email)}</div>
+                <div class="card-foot">
+                    ${foot}
+                    <div class="dropdown">
+                        <button class="kebab" data-bs-toggle="dropdown" aria-expanded="false" aria-label="More actions for ${escapeHtml(name)}"><i class="bi bi-three-dots-vertical"></i></button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            ${menuItems}
+                            <li><hr class="dropdown-divider"></li>
+                            <li><button class="dropdown-item text-danger" onclick="deleteEmployee(${user.id})"><i class="bi bi-trash me-2"></i>Delete</button></li>
+                        </ul>
+                    </div>
+                </div>
+            </article>`;
+        },
+        rowMatches(row) {
+            if (enrollmentFilter === 'enrolled') return row.dataset.enrolled === '1';
+            if (enrollmentFilter === 'pending') return row.dataset.enrolled === '0';
+            return true;
+        },
+    };
+
+    document.querySelectorAll('.segmented button').forEach(btn => {
+        btn.addEventListener('click', () => {
+            enrollmentFilter = btn.dataset.filter;
+            document.querySelectorAll('.segmented button').forEach(b => b.setAttribute('aria-pressed', b === btn));
+            applyFilters();
+        });
+    });
+</script>
+{% include 'verify/prototypes/_script.html' %}
+</body>
+</html>

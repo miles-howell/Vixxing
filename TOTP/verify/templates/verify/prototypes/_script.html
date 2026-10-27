@@ -1,0 +1,596 @@
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Shared behavior for every dashboard prototype. This is the production
+    // dashboard's script with the row markup pulled out: each prototype defines
+    // `window.layout` before including this file, and owns how a row looks.
+    //
+    // DOM contract every prototype provides:
+    //   #employeeTable            container of rows
+    //   .employee-row             one per employee, with data-user-id / data-name /
+    //                             data-email / data-enrolled ("1" or "0")
+    //   .employee-select-checkbox per-row checkbox (data-user-id)
+    //   #code_<id>, [data-verify-for="<id>"]   code input + its Verify button
+    //   #selectAllEmployees, #selectedCount, .bulk-action-btn,
+    //   #exportEmployeesBtn, #exportEmployeesLabel, #searchInput,
+    //   #darkModeToggle, #darkModeIcon
+    //   #employees-data           json_script of the initial employee list
+    //
+    // window.layout:
+    //   buildRowHtml(user)                      required: markup for one row
+    //   onEnrollmentChanged(row, isEnrolled)    optional: defaults to rebuilding the row
+    //   onSelectionChange(count)                optional
+    //   onRowRemoved(userId)                    optional
+    //   onVerifyResult(userId, ok, message)     optional: return true to suppress the notice modal
+    //   rowMatches(row)                         optional: extra filter alongside search
+    const layout = window.layout;
+
+    // Dark mode toggle (persisted across visits; theme is applied pre-paint in <head>)
+    const THEME_KEY = 'helpdeskDashboardTheme';
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    const darkModeIcon = document.getElementById('darkModeIcon');
+
+    function applyTheme(theme) {
+        document.documentElement.setAttribute('data-bs-theme', theme);
+        const isDark = theme === 'dark';
+        darkModeIcon.className = isDark ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
+        const label = isDark ? 'Switch to light mode' : 'Switch to dark mode';
+        darkModeToggle.title = label;
+        darkModeToggle.setAttribute('aria-label', label);
+    }
+
+    function toggleDarkMode() {
+        const current = document.documentElement.getAttribute('data-bs-theme') || 'light';
+        const next = current === 'dark' ? 'light' : 'dark';
+        try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+        applyTheme(next);
+    }
+
+    applyTheme(document.documentElement.getAttribute('data-bs-theme') || 'light');
+
+    // Django CSRF Token Helper
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('totp_csrftoken');
+
+    // Dynamic Django URL Builders
+    // We use a dummy ID (999999) to let Django render the URL, then swap it out dynamically in JS
+    const addEmployeeUrl = "{% url 'verify:add_employee' %}";
+    const enrollUrlBase = "{% url 'verify:enroll_user' 999999 %}".replace('999999/', '');
+    const checkUrlBase = "{% url 'verify:verify_caller' 999999 %}".replace('999999/', '');
+    const unenrollUrlBase = "{% url 'verify:unenroll' 999999 %}".replace('999999/', '');
+    const deleteUrlBase = "{% url 'verify:delete_employee' 999999 %}".replace('999999/', '');
+    const importEmployeesUrl = "{% url 'verify:import_employees' %}";
+    const exportEmployeesBaseUrl = "{% url 'verify:export_employees' %}";
+    const bulkEnrollUrl = "{% url 'verify:bulk_enroll' %}";
+    const bulkReenrollUrl = "{% url 'verify:bulk_reenroll' %}";
+    const bulkUnenrollUrl = "{% url 'verify:bulk_unenroll' %}";
+    const bulkDeleteUrl = "{% url 'verify:bulk_delete' %}";
+
+    // ---- Custom confirm dialog (centered in the viewport, replaces native confirm()) ----
+    const confirmModalEl = document.getElementById('confirmModal');
+    const confirmModal = new bootstrap.Modal(confirmModalEl);
+    const confirmModalTitle = document.getElementById('confirmModalTitle');
+    const confirmModalMessage = document.getElementById('confirmModalMessage');
+    const confirmModalConfirmBtn = document.getElementById('confirmModalConfirmBtn');
+
+    function customConfirm({ title = 'Please Confirm', message, confirmText = 'Confirm', variant = 'primary' }) {
+        return new Promise((resolve) => {
+            confirmModalTitle.textContent = title;
+            confirmModalMessage.textContent = message;
+            confirmModalConfirmBtn.textContent = confirmText;
+            confirmModalConfirmBtn.className = `btn btn-${variant}`;
+
+            let settled = false;
+            const settle = (result) => {
+                if (settled) return;
+                settled = true;
+                confirmModalConfirmBtn.removeEventListener('click', onConfirm);
+                confirmModalEl.removeEventListener('hidden.bs.modal', onHidden);
+                resolve(result);
+            };
+            const onConfirm = () => { settle(true); confirmModal.hide(); };
+            // Fires on Cancel, the X button, backdrop click, and Escape - all "no".
+            const onHidden = () => settle(false);
+
+            confirmModalConfirmBtn.addEventListener('click', onConfirm);
+            confirmModalEl.addEventListener('hidden.bs.modal', onHidden);
+            confirmModal.show();
+        });
+    }
+
+    // ---- Custom notice dialog (centered in the viewport, replaces native alert()) ----
+    const noticeModalEl = document.getElementById('noticeModal');
+    const noticeModal = new bootstrap.Modal(noticeModalEl);
+    const noticeModalTitle = document.getElementById('noticeModalTitle');
+    const noticeModalMessage = document.getElementById('noticeModalMessage');
+
+    function customNotice(message, { title = 'Notice' } = {}) {
+        noticeModalTitle.textContent = title;
+        noticeModalMessage.textContent = message;
+        noticeModal.show();
+    }
+
+    // ---- Add Employees modal ----
+    const addEmployeeModalEl = document.getElementById('addEmployeeModal');
+    const addEmployeeModal = new bootstrap.Modal(addEmployeeModalEl);
+    const addEmployeeError = document.getElementById('addEmployeeError');
+
+    function showAddEmployeeError(message) {
+        addEmployeeError.textContent = message;
+        addEmployeeError.classList.remove('d-none');
+    }
+
+    function hideAddEmployeeError() {
+        addEmployeeError.textContent = '';
+        addEmployeeError.classList.add('d-none');
+    }
+
+    // Clear any stale error whenever the modal is (re)opened.
+    addEmployeeModalEl.addEventListener('show.bs.modal', hideAddEmployeeError);
+
+    // ---- Row lookup ----
+    function getRow(userId) {
+        return document.querySelector(`#employeeTable .employee-row[data-user-id="${userId}"]`);
+    }
+
+    function getAllRows() {
+        return Array.from(document.querySelectorAll('#employeeTable .employee-row'));
+    }
+
+    // ---- Selection tracking (for bulk actions & selection-aware export) ----
+    const selectedEmployeeIds = new Set();
+
+    function updateSelectionUI() {
+        const total = getAllRows().length;
+        const selectedCount = selectedEmployeeIds.size;
+
+        const selectAllCheckbox = document.getElementById('selectAllEmployees');
+        selectAllCheckbox.checked = total > 0 && selectedCount === total;
+        selectAllCheckbox.indeterminate = selectedCount > 0 && selectedCount < total;
+
+        document.getElementById('selectedCount').textContent = selectedCount > 0 ? `${selectedCount} selected` : '';
+
+        document.querySelectorAll('.bulk-action-btn').forEach(btn => {
+            btn.disabled = selectedCount === 0;
+        });
+
+        const exportBtn = document.getElementById('exportEmployeesBtn');
+        const exportLabel = selectedCount > 0
+            ? `Export Selected (${selectedCount}) (CSV)`
+            : 'Export All Employees (CSV)';
+        exportBtn.href = selectedCount > 0
+            ? `${exportEmployeesBaseUrl}?ids=${Array.from(selectedEmployeeIds).join(',')}`
+            : exportEmployeesBaseUrl;
+        exportBtn.title = exportLabel;
+        document.getElementById('exportEmployeesLabel').textContent = exportLabel;
+
+        updateStats();
+        if (layout.onSelectionChange) layout.onSelectionChange(selectedCount);
+    }
+
+    // Optional summary counters: any element with data-stat="total|enrolled|pending".
+    function updateStats() {
+        const rows = getAllRows();
+        const enrolled = rows.filter(row => row.dataset.enrolled === '1').length;
+        const counts = { total: rows.length, enrolled, pending: rows.length - enrolled };
+        document.querySelectorAll('[data-stat]').forEach(el => {
+            el.textContent = counts[el.dataset.stat];
+        });
+    }
+
+    function toggleEmployeeSelection(userId, checkbox) {
+        if (checkbox.checked) selectedEmployeeIds.add(userId);
+        else selectedEmployeeIds.delete(userId);
+        getRow(userId)?.classList.toggle('is-selected', checkbox.checked);
+        updateSelectionUI();
+    }
+
+    function toggleSelectAll(checkbox) {
+        getAllRows().forEach(row => {
+            // Select-all only covers rows currently visible after search/filter.
+            if (checkbox.checked && row.hidden) return;
+            const cb = row.querySelector('.employee-select-checkbox');
+            const userId = parseInt(row.dataset.userId, 10);
+            cb.checked = checkbox.checked;
+            row.classList.toggle('is-selected', checkbox.checked);
+            if (checkbox.checked) selectedEmployeeIds.add(userId);
+            else selectedEmployeeIds.delete(userId);
+        });
+        updateSelectionUI();
+    }
+
+    function clearSelection() {
+        selectedEmployeeIds.clear();
+        document.querySelectorAll('.employee-select-checkbox').forEach(cb => cb.checked = false);
+        getAllRows().forEach(row => row.classList.remove('is-selected'));
+        updateSelectionUI();
+    }
+
+    // ---- Row rendering helpers (shared by server-rendered & dynamically-added rows) ----
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str ?? '';
+        return div.innerHTML;
+    }
+
+    function displayNameFor(user) {
+        return (user.full_name && user.full_name.trim()) ? user.full_name : user.email;
+    }
+
+    function initialsFor(name) {
+        const parts = (name || '').replace(/@.*/, '').split(/[\s._-]+/).filter(Boolean);
+        return ((parts[0]?.[0] || '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase() || '?';
+    }
+
+    function appendEmployeeRow(user) {
+        document.getElementById('employeeTable').insertAdjacentHTML('beforeend', layout.buildRowHtml(user));
+        applyFilters();
+        updateSelectionUI();
+    }
+
+    // Re-renders a row from its data attributes, keeping its selection state.
+    function rebuildRow(row, isEnrolled) {
+        const userId = parseInt(row.dataset.userId, 10);
+        row.insertAdjacentHTML('afterend', layout.buildRowHtml({
+            id: userId,
+            full_name: row.dataset.name,
+            email: row.dataset.email,
+            is_enrolled: isEnrolled,
+        }));
+        const fresh = row.nextElementSibling;
+        row.remove();
+        if (selectedEmployeeIds.has(userId)) {
+            fresh.classList.add('is-selected');
+            fresh.querySelector('.employee-select-checkbox').checked = true;
+        }
+        return fresh;
+    }
+
+    function removeEmployeeRow(userId) {
+        const row = getRow(userId);
+        if (row) row.remove();
+        selectedEmployeeIds.delete(userId);
+        if (layout.onRowRemoved) layout.onRowRemoved(userId);
+    }
+
+    function updateEmployeeRowEnrolled(userId, isEnrolled) {
+        const row = getRow(userId);
+        if (!row) return;
+        row.dataset.enrolled = isEnrolled ? '1' : '0';
+        if (layout.onEnrollmentChanged) layout.onEnrollmentChanged(row, isEnrolled);
+        else rebuildRow(row, isEnrolled);
+        document.querySelectorAll(`#code_${userId}, [data-verify-for="${userId}"]`).forEach(el => {
+            el.disabled = !isEnrolled;
+        });
+        applyFilters();
+        updateStats();
+    }
+
+    // 1. Add New Employee (individually, from the Add Employees modal)
+    document.getElementById('addEmployeeForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        addEmployee();
+    });
+
+    function addEmployee() {
+        const firstNameInput = document.getElementById('newEmpFirstName');
+        const lastNameInput = document.getElementById('newEmpLastName');
+        const emailInput = document.getElementById('newEmpEmail');
+
+        const firstName = firstNameInput.value.trim();
+        const lastName = lastNameInput.value.trim();
+        const email = emailInput.value.trim();
+
+        if (!email) {
+            showAddEmployeeError('Email is required.');
+            return;
+        }
+
+        fetch(addEmployeeUrl, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                'first_name': firstName,
+                'last_name': lastName,
+                'email': email
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                appendEmployeeRow(data.user);
+                hideAddEmployeeError();
+                // Stays open per spec - only manual close (X / backdrop) dismisses it.
+                firstNameInput.value = '';
+                lastNameInput.value = '';
+                emailInput.value = '';
+                firstNameInput.focus();
+            } else {
+                showAddEmployeeError(data.message || 'Failed to add employee.');
+            }
+        })
+        .catch(() => showAddEmployeeError('Failed to add employee.'));
+    }
+
+    // 2. Trigger Enrollment / Regenerate QR
+    async function triggerEnrollment(userId, forceRegenerate = false) {
+        if (forceRegenerate) {
+            const confirmed = await customConfirm({
+                title: 'Regenerate MFA Setup',
+                message: 'This will overwrite their existing MFA setup. Are you sure?',
+                confirmText: 'Regenerate',
+                variant: 'warning',
+            });
+            if (!confirmed) return;
+        }
+
+        const noticeTitle = forceRegenerate ? 'Regenerate QR' : 'Email QR Code';
+
+        fetch(`${enrollUrlBase}${userId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ force: forceRegenerate })
+        })
+        .then(response => response.json())
+        .then(data => {
+            customNotice(data.message, { title: noticeTitle });
+            if (data.status === 'success' && !forceRegenerate) {
+                updateEmployeeRowEnrolled(userId, true);
+            }
+        })
+        .catch(() => customNotice('Failed to send enrollment email.', { title: noticeTitle }));
+    }
+
+    // 3. Unenroll Employee (clears MFA, keeps the account)
+    async function unenrollEmployee(userId) {
+        const confirmed = await customConfirm({
+            title: 'Unenroll Employee',
+            message: 'Are you sure? Their current authenticator app will stop working.',
+            confirmText: 'Unenroll',
+            variant: 'danger',
+        });
+        if (!confirmed) return;
+
+        fetch(`${unenrollUrlBase}${userId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+            }
+        })
+        .then(response => {
+            if (response.ok) updateEmployeeRowEnrolled(userId, false);
+            else customNotice('Failed to unenroll employee.', { title: 'Unenroll Employee' });
+        });
+    }
+
+    // 3b. Delete Employee (permanently removes the account, enrolled or not)
+    async function deleteEmployee(userId) {
+        const confirmed = await customConfirm({
+            title: 'Delete Employee',
+            message: 'Permanently delete this employee? This cannot be undone.',
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (!confirmed) return;
+
+        fetch(`${deleteUrlBase}${userId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                removeEmployeeRow(userId);
+                updateSelectionUI();
+            } else {
+                customNotice('Failed to delete employee.', { title: 'Delete Employee' });
+            }
+        })
+        .catch(() => customNotice('Failed to delete employee.', { title: 'Delete Employee' }));
+    }
+
+    // 4. Verify Code
+    function verifyCode(userId) {
+        const codeField = document.getElementById(`code_${userId}`);
+        const codeInput = codeField.value;
+
+        const report = (ok, message, title) => {
+            const handled = layout.onVerifyResult && layout.onVerifyResult(userId, ok, message);
+            if (!handled) customNotice(message, { title });
+        };
+
+        fetch(`${checkUrlBase}${userId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({ 'code': codeInput })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                report(true, 'Caller Verified', 'Verify Caller');
+            } else {
+                report(false, data.message, 'Caller Not Verified');
+            }
+            codeField.value = '';
+        })
+        .catch(() => report(false, 'Failed to verify caller.', 'Caller Not Verified'));
+    }
+
+    // Submit a code with Enter from any code input.
+    document.addEventListener('keydown', function(e) {
+        if (e.key !== 'Enter' || !e.target.id || !e.target.id.startsWith('code_')) return;
+        e.preventDefault();
+        verifyCode(parseInt(e.target.id.slice(5), 10));
+    });
+
+    // 5. Import Employees (CSV) - from the Add Employees modal
+    function importEmployeesCsv() {
+        const fileInput = document.getElementById('csvImportFile');
+        const file = fileInput.files[0];
+        if (!file) {
+            showAddEmployeeError('Choose a CSV file first.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('csv_file', file);
+
+        fetch(importEmployeesUrl, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrftoken },
+            body: formData,
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                data.created.forEach(appendEmployeeRow);
+                fileInput.value = '';
+                hideAddEmployeeError();
+                addEmployeeModal.hide();
+                let msg = `Imported ${data.created.length} employee(s).`;
+                if (data.skipped.length) msg += ` Skipped ${data.skipped.length} existing email(s).`;
+                customNotice(msg, { title: 'Import CSV' });
+            } else {
+                showAddEmployeeError(data.message || 'Import failed.');
+            }
+        })
+        .catch(() => showAddEmployeeError('Import failed.'));
+    }
+
+    // 6. Bulk Actions (Enroll / Re-Enroll / Unenroll / Delete Selected)
+    function postJson(url, payload) {
+        return fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        }).then(response => response.json());
+    }
+
+    async function bulkEnrollSelected() {
+        const ids = Array.from(selectedEmployeeIds);
+        if (!ids.length) return;
+        const confirmed = await customConfirm({
+            title: 'Enroll Selected Employees',
+            message: `Send enrollment emails to ${ids.length} selected employee(s)?`,
+            confirmText: 'Send Emails',
+            variant: 'primary',
+        });
+        if (!confirmed) return;
+
+        postJson(bulkEnrollUrl, { user_ids: ids })
+            .then(data => {
+                (data.enrolled || []).forEach(user => updateEmployeeRowEnrolled(user.id, true));
+                customNotice(data.message, { title: 'Enroll Selected Employees' });
+                clearSelection();
+            })
+            .catch(() => customNotice('Bulk enroll failed.', { title: 'Enroll Selected Employees' }));
+    }
+
+    async function bulkReenrollSelected() {
+        const ids = Array.from(selectedEmployeeIds);
+        if (!ids.length) return;
+        const confirmed = await customConfirm({
+            title: 'Re-Enroll Selected Employees',
+            message: `This will overwrite existing MFA setups for ${ids.length} selected employee(s). Continue?`,
+            confirmText: 'Regenerate',
+            variant: 'warning',
+        });
+        if (!confirmed) return;
+
+        postJson(bulkReenrollUrl, { user_ids: ids })
+            .then(data => {
+                customNotice(data.message, { title: 'Re-Enroll Selected Employees' });
+                clearSelection();
+            })
+            .catch(() => customNotice('Bulk re-enroll failed.', { title: 'Re-Enroll Selected Employees' }));
+    }
+
+    async function bulkUnenrollSelected() {
+        const ids = Array.from(selectedEmployeeIds);
+        if (!ids.length) return;
+        const confirmed = await customConfirm({
+            title: 'Unenroll Selected Employees',
+            message: `Unenroll ${ids.length} selected employee(s)? Their authenticator apps will stop working.`,
+            confirmText: 'Unenroll',
+            variant: 'danger',
+        });
+        if (!confirmed) return;
+
+        postJson(bulkUnenrollUrl, { user_ids: ids })
+            .then(data => {
+                (data.unenrolled || []).forEach(id => updateEmployeeRowEnrolled(id, false));
+                let msg = `Unenrolled ${data.unenrolled.length} employee(s).`;
+                if (data.skipped.length) msg += ` Skipped ${data.skipped.length} not enrolled.`;
+                customNotice(msg, { title: 'Unenroll Selected Employees' });
+                clearSelection();
+            })
+            .catch(() => customNotice('Bulk unenroll failed.', { title: 'Unenroll Selected Employees' }));
+    }
+
+    async function bulkDeleteSelected() {
+        const ids = Array.from(selectedEmployeeIds);
+        if (!ids.length) return;
+        const confirmed = await customConfirm({
+            title: 'Delete Selected Employees',
+            message: `Permanently delete ${ids.length} selected employee(s)? This cannot be undone.`,
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (!confirmed) return;
+
+        postJson(bulkDeleteUrl, { user_ids: ids })
+            .then(data => {
+                (data.deleted || []).forEach(removeEmployeeRow);
+                customNotice(`Deleted ${data.deleted.length} employee(s).`, { title: 'Delete Selected Employees' });
+                updateSelectionUI();
+            })
+            .catch(() => customNotice('Bulk delete failed.', { title: 'Delete Selected Employees' }));
+    }
+
+    // Search + layout filters
+    const searchInput = document.getElementById('searchInput');
+
+    function applyFilters() {
+        const filter = searchInput.value.toLowerCase();
+        getAllRows().forEach(row => {
+            const text = `${row.dataset.name} ${row.dataset.email}`.toLowerCase();
+            const matches = text.includes(filter) && (!layout.rowMatches || layout.rowMatches(row));
+            row.hidden = !matches;
+        });
+    }
+
+    searchInput.addEventListener('input', applyFilters);
+
+    // Initial render from the server-provided employee list
+    document.getElementById('employeeTable').innerHTML =
+        JSON.parse(document.getElementById('employees-data').textContent).map(layout.buildRowHtml).join('');
+
+    // Initialize selection-dependent UI (select-all state, disabled bulk buttons, export label)
+    applyFilters();
+    updateSelectionUI();
+</script>
