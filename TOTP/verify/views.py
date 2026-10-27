@@ -323,10 +323,13 @@ def verify_caller(request, user_id):
 
 @staff_member_required
 def helpdesk_dashboard(request):
-    # FIX 4: Update the related name to match Django's default lowercase model convention
-    users = User.objects.filter(groups__name='Employees').select_related('employeemfa')
+    users = User.objects.filter(groups__name='Employees').select_related('employeemfa').order_by('last_name', 'first_name')
 
-    return render(request, 'verify/dashboard.html', {'users': users})
+    # Rows are rendered client-side from the same summary shape the add/import
+    # endpoints return, so the template defines its row markup exactly once.
+    return render(request, 'verify/dashboard.html', {
+        'employees': [_user_summary(user, _is_enrolled(user)) for user in users],
+    })
 
 
 @staff_member_required
