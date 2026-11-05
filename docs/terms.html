@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Terms of Use · Vixxing</title>
+  <meta name="description" content="Terms for using vixxing.com. The Vixxing software itself is licensed under the GNU GPL v3.0.">
+  <meta name="theme-color" content="#0E1116">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/legal.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="wrap">
+    <a class="brand" href="./"><img src="assets/favicon.svg" alt="">Vixxing</a>
+    <div class="nav-links">
+      <a href="privacy.html">Privacy</a>
+      <a href="terms.html" aria-current="page">Terms</a>
+      <a href="https://github.com/miles-howell/vixxing">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<main class="doc">
+  <p class="eyebrow">Legal</p>
+  <h1>Terms of Use</h1>
+  <p class="meta">Effective November 5, 2026</p>
+
+  <div class="summary">
+    <p>The short version</p>
+    <ul>
+      <li>These terms cover the vixxing.com website. The Vixxing software is licensed separately under the GNU GPL v3.0, and that license governs your use of the code.</li>
+      <li>The website and its demo are informational. The demo uses fake codes and does not verify anyone.</li>
+      <li>Vixxing is self-hosted and LAN-only by design. You are responsible for how you deploy and secure it.</li>
+      <li>Everything is provided as is, with no warranty.</li>
+    </ul>
+  </div>
+
+  <h2 id="acceptance">1. About these terms</h2>
+  <p>These Terms of Use (“Terms”) govern your use of the website at <a href="https://vixxing.com">vixxing.com</a> (the “Site”), operated by the maintainer of the open-source Vixxing project (“we”, “us”). By using the Site, you agree to these Terms. If you do not agree, please do not use the Site.</p>
+  <p>Our <a href="privacy.html">Privacy Policy</a> explains how the Site handles information. In short, it collects none.</p>
+
+  <h2 id="software">2. The software is licensed under the GPL, not these Terms</h2>
+  <p>The Vixxing software, including its source code, documentation in the repository, and the assets shipped with it, is released under the <a href="https://github.com/miles-howell/vixxing/blob/main/LICENSE">GNU General Public License v3.0</a> (“GPL”). Your rights to use, copy, modify, and distribute the software come from the GPL alone. Nothing in these Terms limits or adds conditions to the rights the GPL grants you. If these Terms and the GPL ever conflict regarding the software, the GPL controls.</p>
+  <p>The source code is hosted on GitHub. Your use of GitHub is subject to <a href="https://docs.github.com/en/site-policy/github-terms/github-terms-of-service">GitHub's Terms of Service</a>.</p>
+
+  <h2 id="use">3. Using the Site</h2>
+  <p>You may view, link to, and share the Site freely. When using it, you agree not to:</p>
+  <ul>
+    <li>attempt to interfere with, overload, or disrupt the Site or the infrastructure that hosts it;</li>
+    <li>use the Site to break any law; or</li>
+    <li>misrepresent the Site, its content, or the Vixxing project as being endorsed by, or affiliated with, anyone it is not.</li>
+  </ul>
+
+  <h2 id="demo">4. The interactive demo</h2>
+  <p>The Site's “Try it” demo simulates a help-desk verification. You should know that:</p>
+  <ul>
+    <li>the codes it shows are random values generated in your browser from the current time. They are not real TOTP codes and are tied to no real account;</li>
+    <li>“Jordan Avery” and the example email addresses are fictional; and</li>
+    <li>a “Caller verified” result in the demo verifies no one. Never use the demo to verify a real caller or to authorize a real password or MFA reset.</li>
+  </ul>
+
+  <h2 id="responsibility">5. Your responsibility when you deploy Vixxing</h2>
+  <p>Vixxing is self-hosted software. We do not operate it for you, cannot see your installation, and do not process your employees' data. If you deploy it, you are responsible for:</p>
+  <ul>
+    <li><strong>Network exposure.</strong> Vixxing is built for a trusted internal network and is not hardened for the public internet. The shipped configuration does not assume HTTPS. Before it leaves a trusted segment, you should terminate TLS, enable secure cookies, and place it behind appropriate access controls such as a VPN, an internal reverse proxy, or IP allow-listing.</li>
+    <li><strong>Protecting secrets.</strong> TOTP secrets are stored unencrypted in your database and are sent to employees in enrollment email. You are responsible for securing the database, the host, and your email delivery, including encrypting enrollment mail where you can.</li>
+    <li><strong>Credentials and email providers.</strong> You supply your own Microsoft Graph or SMTP credentials and must comply with those providers' terms.</li>
+    <li><strong>Employee data and the law.</strong> You are the controller of the personal data your installation holds, including names, email addresses, and TOTP secrets. You are responsible for meeting the privacy, employment, and data-protection laws that apply to you.</li>
+    <li><strong>Your verification process.</strong> Vixxing adds a possession check to help-desk calls. It is one control, not a complete identity-verification program. You decide when a reset is appropriate and remain responsible for those decisions.</li>
+  </ul>
+
+  <h2 id="ip">6. Names and Site content</h2>
+  <p>The software's source code is covered by the GPL as described above. The “Vixxing” name and logo identify this project. Please do not use them in a way that suggests we endorse or are affiliated with your product, service, or fork. Describing your project accurately, for example as “based on Vixxing”, is fine.</p>
+  <p>Third-party names mentioned on the Site belong to their respective owners and are used only to describe compatibility. This includes Microsoft, Microsoft Authenticator, Entra ID, Exchange, Google Authenticator, Authy, 1Password, GitHub, and Django. Their mention does not imply endorsement.</p>
+
+  <h2 id="links">7. Third-party sites and services</h2>
+  <p>The Site links to, and loads resources from, third parties including GitHub and Google Fonts. We do not control those services and are not responsible for their content, availability, or practices. Your use of them is subject to their own terms.</p>
+
+  <h2 id="warranty">8. No warranty</h2>
+  <p class="caps">The Site, the demo, and all information on the Site are provided “as is” and “as available”, without warranty of any kind, express or implied, including any warranty of merchantability, fitness for a particular purpose, accuracy, or non-infringement. We do not warrant that the Site will be available, error-free, or secure, or that following its guidance will prevent any particular attack. The software's own warranty disclaimer is in sections 15 and 16 of the GPL.</p>
+  <p>The Site's content, including the security posture, recommended hosting stack, and quick-start steps, is general information and not professional security, legal, or compliance advice.</p>
+
+  <h2 id="liability">9. Limitation of liability</h2>
+  <p class="caps">To the fullest extent permitted by law, we will not be liable for any indirect, incidental, special, consequential, or punitive damages, or for any loss of data, profits, or goodwill, arising out of or related to your use of the Site, even if we have been advised of the possibility of such damages. Our total liability for any claim relating to the Site will not exceed zero dollars (US $0), since the Site is provided free of charge. Some jurisdictions do not allow certain limitations, so some of these may not apply to you.</p>
+
+  <h2 id="changes">10. Changes</h2>
+  <p>We may update these Terms or change or discontinue the Site at any time. When we update the Terms, we will revise the date above. Continued use of the Site after a change means you accept the updated Terms. The full history of this page is public in the <a href="https://github.com/miles-howell/vixxing/commits/main/docs/terms.html">repository's commit log</a>.</p>
+
+  <h2 id="general">11. General</h2>
+  <p>If any part of these Terms is found unenforceable, the rest remains in effect. Our failure to enforce any provision is not a waiver. These Terms, together with the Privacy Policy, are the entire agreement between you and us about the Site. Separately, the GPL governs the software.</p>
+
+  <h2 id="contact">12. Contact</h2>
+  <p>For questions about these Terms, open an issue at <a href="https://github.com/miles-howell/vixxing/issues">github.com/miles-howell/vixxing/issues</a>.</p>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a class="brand" href="./"><img src="assets/favicon.svg" alt="">Vixxing</a>
+    <div class="links">
+      <a href="privacy.html">Privacy</a>
+      <a href="terms.html">Terms</a>
+      <a href="https://github.com/miles-howell/vixxing/blob/main/LICENSE">GNU GPL v3.0</a>
+      <a href="https://github.com/miles-howell/vixxing">GitHub</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
