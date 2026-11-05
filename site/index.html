@@ -64,13 +64,14 @@
   .vx__code { display: flex; gap: 8px; }
   .vx__code span { width: 40px; height: 48px; border-radius: 8px; border: 1px solid var(--vx-line); display: grid; place-items: center; font: 500 24px/1 var(--font-mono); background: #fff; }
   .vx__code span:nth-child(3) { margin-right: 10px; }
-  .vx__btn { height: 38px; padding: 0 22px; border-radius: 8px; background: var(--vx-ink); color: #fff; display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; }
+  .vx__btn { height: 38px; padding: 0 22px; border-radius: 99px; background: #2ea66a; color: #0e1116; display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; }
   .vx__result { display: flex; gap: 10px; align-items: flex-start; width: min(100%, 420px); padding: 12px 14px; border-radius: 10px; background: var(--vx-ok-bg); color: #145c39; font-size: 13px; }
   .vx__result b { display: block; font-size: 14px; font-weight: 500; color: var(--vx-ok); }
   .vx__result svg { flex: none; width: 20px; height: 20px; stroke: var(--vx-ok); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
   .vx__acts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
-  .vx__acts span { height: 30px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--vx-line); display: inline-flex; align-items: center; font-size: 13px; font-weight: 500; color: var(--vx-ink); }
-  .vx__acts span.warn { color: var(--vx-no); border-color: rgb(196 51 58 / .35); }
+  .vx__acts span { display: inline-flex; align-items: center; font-size: 13px; font-weight: 500; color: var(--vx-ink); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--vx-line); }
+  .vx__acts { gap: 18px; }
+  .vx__acts span.warn { color: var(--vx-no); }
   .vx__log { width: 100%; display: grid; gap: 0; margin-top: 6px; font-size: 13px; }
   .vx__log li { list-style: none; display: grid; grid-template-columns: 1fr auto; gap: 12px; padding: 9px 0; border-top: 1px solid var(--vx-line); }
   .vx__log li span:last-child { color: var(--vx-muted); }
@@ -151,9 +152,12 @@
   .why-code .ring circle { fill: none; stroke-width: 4; }
 
   /* ---- setup ---- */
-  #setup .frame { --p-h: 560px; }
+  #setup .frame { --p-h: 640px; }
   @media (max-width: 639px) { #setup .frame { --p-h: 340px; } #manage .panel { --p-h: 240px; } .why-col p { display: none; } .why-code { padding: var(--s-5); } .why-code b { font-size: 40px; } }
   @media (min-width: 640px) and (max-width: 1279px) { #how { --h: 2 } }
+  @media (min-width: 640px) and (max-width: 1023px) { #how .panel { --p-h: 400px; } #manage .panel { --p-h: 360px; } }
+  @media (min-width: 1024px) and (max-width: 1279px) { #faq .faq > .faq__item { padding: var(--s-4) 0; } #faq .faq > .faq__item:first-child { padding-top: 0; } #faq .faq > .faq__item:nth-child(n+5) { display: none; } }
+  @media (max-width: 639px) { #manage .panel { --p-h: 180px; } .works-with, #faq .stack-4 > p.muted, #faq .faq > .faq__item:nth-child(6) { display: none; } }
 </style>
 </head>
 <body>
@@ -223,10 +227,10 @@
   <section class="section" id="dashboard" aria-labelledby="dashboard-h">
     <div class="wrap">
       <div class="section-head">
-        <h2 id="dashboard-h">Every employee in the agent dashboard</h2>
+        <h2 id="dashboard-h">The Vixxing dashboard for every employee</h2>
         <p>Pick a name, email them a QR code and watch their status turn to Enrolled. <a class="link" href="#manage">See enrollment tools</a></p>
       </div>
-      <div class="ui app fill" role="img" aria-label="The employee list beside Hannah Kim's record: not enrolled, with Email QR code, and a delivery log showing Microsoft Graph sent the last message" data-ui-pause-host>
+      <div class="ui ui-app app fill" role="img" aria-label="The employee list beside Hannah Kim's record: not enrolled, with Email QR code, and a delivery log showing Microsoft Graph sent the last message" data-ui-pause-host>
         <div class="app__pane app__pane--list" data-ui-loop>
           <div class="ui ui-panel ui-win" data-ui="window" data-open="Not enrolled" data-work="Sending QR" data-done="Enrolled">
             <div class="ui-win__bar">
@@ -259,7 +263,7 @@
           </div>
         </div>
         <div class="app__pane app__pane--open">
-          <div class="ui ui-vx vx" aria-hidden="true">
+          <div class="vx" aria-hidden="true">
             <div class="vx__bar"><span><b>Hannah Kim</b> · Employee</span><span class="sp"></span></div>
             <div class="vx__open">
               <div class="vx__head"><span class="av">HK</span><div><h6>Hannah Kim</h6><span class="vx__chip off">Not enrolled</span></div></div>
@@ -286,7 +290,7 @@
   <section class="section" style="--hm: 2" id="how" aria-labelledby="how-h">
     <div class="wrap">
       <div class="section-head">
-        <h2 id="how-h">Verify a caller in 3 steps. <span class="muted">Enroll once, then check on every call.</span></h2>
+        <h2 id="how-h">Caller verification in 3 steps. <span class="muted">Enroll once, then check on every call.</span></h2>
       </div>
       <div class="grid">
         <article class="card card--row card--open span-4 m-nolift">
@@ -311,7 +315,7 @@
           <p>Microsoft Authenticator, Google Authenticator or any RFC 6238 app shows the code.</p>
           <div class="panel" data-fx="gradient-mesh" data-fx-seed="23" data-fx-params='{"drift":0}' data-fx-palette='{"bg":"#cdd6c6","surface":"#dce3d6","ink":"#262d24","accent":"#6c8e63"}'>
             <div class="stage"><div class="at-rise fit" style="--fit-max:300px;--ax:max(24px, 50% - 150px);--ay:48px;--ay-sm:40px">
-              <div class="mini" aria-hidden="true">
+              <div class="ui ui-mini mini" aria-hidden="true">
                 <h5><span>Company HelpDesk</span><span>18 s</span></h5>
                 <div class="totp"><b>482 913</b><svg class="ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15" stroke="#e5e7eb"/><circle cx="18" cy="18" r="15" stroke="#1f8a55" stroke-dasharray="56.5 94.2" transform="rotate(-90 18 18)"/></svg></div>
                 <p class="who">jordan.avery</p>
@@ -325,7 +329,7 @@
           <p>The agent types the code the caller reads out and clicks Verify.</p>
           <div class="panel" data-fx="gradient-mesh" data-fx-seed="37" data-fx-params='{"drift":0}' data-fx-palette='{"bg":"#d9ccb7","surface":"#e9e0d2","ink":"#2a2622","accent":"#a8794a"}'>
             <div class="stage"><div class="at-rise fit" style="--fit-max:320px;--ax:max(24px, 50% - 160px);--ay:48px;--ay-sm:40px">
-              <div class="mini" aria-hidden="true">
+              <div class="ui ui-mini mini" aria-hidden="true">
                 <div class="ok"><svg class="sh" viewBox="0 0 24 24" stroke="#1f8a55"><path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V6z"/><path d="m8.8 12.2 2.3 2.3 4.2-4.6"/></svg><span><b>Caller verified</b>Safe to proceed with the reset.</span></div>
                 <div class="no"><svg class="sh" viewBox="0 0 24 24" stroke="#c4333a"><path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V6z"/><path d="m9.5 9.5 5 5M14.5 9.5l-5 5"/></svg><span><b>Not verified</b>Invalid code. Do not proceed.</span></div>
               </div>
@@ -339,7 +343,7 @@
   <section class="section ground-inverse" id="why" aria-labelledby="why-h">
     <div class="wrap">
       <div class="section-head">
-        <h2 id="why-h">Security questions leak. <span class="muted">A live code from the enrolled phone does not.</span></h2>
+        <h2 id="why-h">Help desk security questions leak. <span class="muted">A live code from the enrolled phone does not.</span></h2>
       </div>
       <div class="grid fill">
         <div class="why-col span-6">
@@ -368,7 +372,7 @@
     <div class="wrap">
       <div class="group">
         <div class="section-head">
-          <h2 id="manage-h">Enrollment for the whole desk. <span class="muted">Add, re-issue and export from the dashboard.</span></h2>
+          <h2 id="manage-h">Enrollment for the whole help desk. <span class="muted">Add, re-issue and export from the dashboard.</span></h2>
         </div>
         <div class="grid">
           <article class="card card--row card--open span-6 m-nolift">
@@ -376,7 +380,7 @@
             <p>Regenerate QR makes a new secret and emails it, so the old device stops working.</p>
             <div class="panel" style="background:#c6d3df" role="img" aria-label="A record for Sam Okafor: Regenerate QR emails a new secret, the old phone is rejected, Unenroll clears the secret, Delete removes the account">
               <div class="stage stage--fade-b"><div class="at-rise fit" style="--fit-max:420px;--ax:max(24px, 50% - 210px);--ay:48px;--ay-sm:40px">
-                <div class="mini" aria-hidden="true">
+                <div class="ui ui-mini mini" aria-hidden="true">
                   <h5><span>Sam Okafor</span><span>Enrolled</span></h5>
                   <table><tr><th>Action</th><th>Result</th></tr>
                     <tr><td>Regenerate QR</td><td>New secret emailed</td></tr>
@@ -393,7 +397,7 @@
             <p>Microsoft Graph is tried first. If it fails, the SMTP mailer delivers and the log says so.</p>
             <div class="panel" style="background:#dce3d6" role="img" aria-label="A delivery log: three enrollment emails delivered by Microsoft Graph and one by SMTP after Graph failed">
               <div class="stage stage--fade-b"><div class="at-rise fit" style="--fit-max:400px;--ax:max(24px, 50% - 200px);--ay:48px;--ay-sm:40px">
-                <div class="mini" aria-hidden="true">
+                <div class="ui ui-mini mini" aria-hidden="true">
                   <h5><span>Delivery log</span><span>Today</span></h5>
                   <table><tr><th>Enrollment email</th><th>Delivered by</th></tr>
                     <tr><td>Priya Natarajan</td><td>Microsoft Graph</td></tr>
@@ -431,7 +435,7 @@
           <p>Export (CSV) lists names, usernames and enrollment for everyone or the selected rows.</p>
           <div class="panel" style="background:#d6e0e9" role="img" aria-label="An export of employees.csv listing name, username and whether each person is enrolled">
             <div class="stage stage--fade-b"><div class="at-rise fit" style="--fit-max:420px;--ax:max(24px, 50% - 210px);--ay:48px;--ay-sm:40px">
-              <div class="mini" aria-hidden="true">
+              <div class="ui ui-mini mini" aria-hidden="true">
                 <h5><span>employees.csv</span><span>6 rows</span></h5>
                 <table><tr><th>Name</th><th>Username</th><th>Enrolled</th></tr>
                   <tr><td>Jordan Avery</td><td>javery</td><td>Yes</td></tr>
@@ -452,9 +456,9 @@
     <div class="wrap">
       <div class="grid">
         <div class="span-6 stack-4">
-          <h2 id="setup-h">Runs on a server inside your network</h2>
+          <h2 id="setup-h">Vixxing runs on a server in your network</h2>
           <p>Vixxing is a Django 6.1 app with SQLite by default. Clone it, fill in <code>.env</code>, migrate and run it under Gunicorn behind an internal proxy.</p>
-          <p class="muted">Built for a trusted LAN, not the public internet. Read the security notes before you deploy.</p>
+          <p>Built for a trusted LAN, not the public internet.</p>
           <p><a class="link" href="https://github.com/miles-howell/vixxing#scope-and-security-posture-lan-only">Read the security notes</a></p>
         </div>
         <div class="frame span-6 start-7" style="height:var(--p-h);background:#c6d3df" data-visual role="img" aria-label="A terminal running python manage.py migrate in the TOTP folder: every app migrates OK and the database is ready">
@@ -469,7 +473,7 @@
               </div>
               <div class="ui-term__screen" data-term-screen>
                 <div class="ui-term__track" data-term-track>
-                  <div class="ui-term__ln ui-term__cmd"><span class="ui-term__cwd">~/<span class="ui-term__up">vixxing/</span>TOTP</span><span class="ui-term__sig">$</span><span class="ui-term__typed" data-term-cmd>python manage.py migrate</span></div>
+                  <div class="ui-term__ln ui-term__cmd"><span class="ui-term__cwd">TOTP</span><span class="ui-term__sig">$</span><span class="ui-term__typed" data-term-cmd>python manage.py migrate</span></div>
                   <div class="ui-term__ln ui-term__meter" data-term-out data-term-meter><span class="ui-term__bar" style="--p:1"><i></i></span><span class="ui-term__count" data-term-count>6 of 6 apps</span></div>
                   <div class="ui-term__ln ui-term__log" data-term-out data-term-step><svg class="ui-term__tick" viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 8.4 2.8 2.8 6.2-6.4"/></svg><span class="ui-term__path">contenttypes</span><span class="ui-term__n">OK</span></div>
                   <div class="ui-term__ln ui-term__log" data-term-out data-term-step><svg class="ui-term__tick" viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 8.4 2.8 2.8 6.2-6.4"/></svg><span class="ui-term__path">auth</span><span class="ui-term__n">OK</span></div>
@@ -478,9 +482,9 @@
                   <div class="ui-term__ln ui-term__log" data-term-out data-term-step><svg class="ui-term__tick" viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 8.4 2.8 2.8 6.2-6.4"/></svg><span class="ui-term__path">verify.0001_initial</span><span class="ui-term__n">OK</span></div>
                   <div class="ui-term__ln ui-term__log" data-term-out data-term-step><svg class="ui-term__tick" viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 8.4 2.8 2.8 6.2-6.4"/></svg><span class="ui-term__path">verify.0002_alter_employeemfa</span><span class="ui-term__n">OK</span></div>
                   <div class="ui-term__ln ui-term__gap" data-term-out aria-hidden="true"></div>
-                  <div class="ui-term__ln ui-term__sum" data-term-out><span class="ui-term__key">Next</span><span class="ui-term__val">python manage.py createsuperuser</span></div>
+                  <div class="ui-term__ln ui-term__sum" data-term-out><span class="ui-term__key">Then</span><span class="ui-term__val">createsuperuser</span></div>
                   <div class="ui-term__ln ui-term__done" data-term-out data-term-done><span class="ui-term__ok"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4.5 8.3 2.4 2.4 4.6-5"/></svg></span><b>Done</b><span class="ui-term__dim">database ready</span></div>
-                  <div class="ui-term__ln ui-term__cmd" data-term-next><span class="ui-term__cwd">~/<span class="ui-term__up">vixxing/</span>TOTP</span><span class="ui-term__sig">$</span><span class="ui-term__typed"></span><i class="ui-term__caret" aria-hidden="true"></i></div>
+                  <div class="ui-term__ln ui-term__cmd" data-term-next><span class="ui-term__cwd">TOTP</span><span class="ui-term__sig">$</span><span class="ui-term__typed"></span><i class="ui-term__caret" aria-hidden="true"></i></div>
                 </div>
               </div>
             </div>
@@ -494,13 +498,13 @@
     <div class="wrap">
       <div class="grid">
         <div class="span-6 stack-4">
-          <h2 id="faq-h">Questions</h2>
+          <h2 id="faq-h">Questions about Vixxing</h2>
           <p class="muted">The rest is in the README on GitHub.</p>
           <div class="works-with" aria-label="Works with">
-            <img data-icon="django" src="assets/icons/django.svg" alt="Django">
-            <img data-icon="python" src="assets/icons/python.svg" alt="Python">
-            <img data-icon="logos:microsoft-icon" src="assets/icons/microsoft-icon.svg" alt="Microsoft Graph">
-            <img data-icon="github" src="assets/icons/github.svg" alt="GitHub" class="ic-ink">
+            <img data-icon="django" src="assets/icons/django.svg" alt="Django" width="32" height="32" loading="lazy">
+            <img data-icon="python" src="assets/icons/python.svg" alt="Python" width="32" height="32" loading="lazy">
+            <img data-icon="logos:microsoft-icon" src="assets/icons/microsoft-icon.svg" alt="Microsoft Graph" width="32" height="32" loading="lazy">
+            <img data-icon="github" src="assets/icons/github.svg" alt="GitHub" width="32" height="32" loading="lazy" class="ic-ink">
           </div>
         </div>
         <div class="faq span-6 start-7">
@@ -520,7 +524,7 @@
   <div class="wrap">
     <div class="closing__cta close--word">
       <div class="section-head--split">
-        <div><h2 id="close-h">Check every caller before a reset</h2><p class="t-lead">Clone it, add your mail settings and verify the first call today.</p></div>
+        <div><h2 id="close-h">Verify every caller before a reset</h2><p class="t-lead">Clone it, add your mail settings and verify the first call today.</p></div>
         <a class="btn btn--primary" href="https://github.com/miles-howell/vixxing">Get Vixxing on GitHub<svg class="m-arrow" viewBox="0 0 12 12" aria-hidden="true"><path class="m-arrow__stem" d="M1 6h8"/><path class="m-arrow__head" d="M4.5 2.5 8 6l-3.5 3.5"/></svg></a>
       </div>
       <p class="close__word" aria-hidden="true">Vixxing</p>
@@ -537,9 +541,8 @@
         <div class="span-2 footer__col"><h4>Questions</h4><ul><li><a href="#faq">FAQ</a></li><li><a href="https://github.com/miles-howell/vixxing/issues">Issues on GitHub</a></li></ul></div>
       </div>
       <div class="footer__legal">
-        <span>&copy; 2026 Vixxing &nbsp; <a href="https://github.com/miles-howell/vixxing/blob/main/LICENSE">GPL-3.0 licence</a></span>
+        <span>&copy; 2026 Vixxing &nbsp; <a href="https://github.com/miles-howell/vixxing/blob/main/LICENSE">GPL-3.0 licence</a> &nbsp; Product names and logos are trademarks of their owners</span>
         <div class="socials"></div>
-        <span class="muted">Product names and logos are trademarks of their owners</span>
       </div>
     </div>
   </div>
