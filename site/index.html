@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="en" data-type="software" data-radius="sharp" data-ground="sky" data-buttons="pill" data-motion>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vixxing: caller verification for IT help desks</title>
+<meta name="description" content="Vixxing checks a help-desk caller with a live 6-digit TOTP code before any password or MFA reset. Free and open source under GPL-3.0.">
+<meta name="site-kind" content="software">
+<meta name="page-type" content="software">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400..700&family=JetBrains+Mono:wght@400..500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/system.css">
+<link rel="stylesheet" href="assets/ui/cards.css">
+<link rel="stylesheet" href="assets/motion/motion.css">
+<link rel="stylesheet" href="assets/backgrounds/backgrounds.css">
+<link rel="stylesheet" href="assets/layout/layout.css">
+<link rel="stylesheet" href="assets/icons/icon.css">
+<style>
+:root {
+  --p-bg: #0e1116; --p-surface: #161b22; --p-ink: #f2efe8; --p-muted: #8b95a3;
+  --p-accent: #2ea66a; --p-accent-ink: #0e1116; --p-action: #2ea66a; --p-action-ink: #0e1116;
+  --p-inv-bg: #f2efe8; --p-inv-surface: #e0ddd7; --p-inv-ink: #0e1116; --p-inv-muted: #5a5b5d;
+  --p-inv-accent: #0e1116; --p-inv-accent-ink: #f2efe8; --p-inv-action: #0e1116; --p-inv-action-ink: #f2efe8;
+  --font-display: "Host Grotesk", system-ui, sans-serif;
+  --font-text: "Host Grotesk", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --display-weight: 500;
+  --display-tracking: -0.035em;
+  --display-tracking-xl: -0.04em;
+}
+</style>
+<link rel="stylesheet" href="assets/ui/base.css">
+<link rel="stylesheet" href="assets/ui/window/fragment.css">
+<link rel="stylesheet" href="assets/ui/notify/fragment.css">
+<link rel="stylesheet" href="assets/ui/checklist/fragment.css">
+<link rel="stylesheet" href="assets/ui/terminal-run/fragment.css">
+<script src="assets/backgrounds/backgrounds.js"></script>
+<style>
+  /* ---- the Vixxing dashboard, drawn as live HTML (hero window and the app-frame's open pane) ---- */
+  .vx { --vx-ink: #16181d; --vx-muted: #5d6470; --vx-line: rgb(22 24 29 / .1); --vx-fill: #f6f5f2; --vx-ok: #1f8a55; --vx-ok-bg: #dcf5e6; --vx-no: #c4333a; --vx-no-bg: #fbe1e2;
+        background: #fff; color: var(--vx-ink); font: 400 14px/1.4 var(--font-text); border-radius: 12px; overflow: hidden;
+        box-shadow: 0 0 0 1px rgb(0 0 0 / .08), 0 30px 70px -30px rgb(0 0 0 / .55); text-align: left; }
+  .vx__bar { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 14px; border-bottom: 1px solid var(--vx-line); font-size: 13px; color: var(--vx-muted); }
+  .vx__bar b { color: var(--vx-ink); font-weight: 500; }
+  .vx__dots { display: flex; gap: 6px; } .vx__dots i { width: 10px; height: 10px; border-radius: 50%; background: #dcdfe2; }
+  .vx__body { display: grid; grid-template-columns: 270px 1fr; }
+  .vx__list { border-right: 1px solid var(--vx-line); background: var(--vx-fill); padding: 12px 10px; display: grid; align-content: start; gap: 2px; }
+  .vx__list h5 { margin: 0 6px 2px; font: 500 15px/1.3 var(--font-text); }
+  .vx__list .sub { margin: 0 6px 10px; font-size: 13px; color: var(--vx-muted); }
+  .vx__search { height: 34px; margin: 0 0 8px; border-radius: 8px; background: #fff; border: 1px solid var(--vx-line); display: flex; align-items: center; padding: 0 10px; color: var(--vx-muted); font-size: 13px; }
+  .vx__p { display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 10px; padding: 8px; border-radius: 8px; font-size: 13px; }
+  .vx__p.is-on { background: #fff; box-shadow: inset 0 0 0 1px var(--vx-line); }
+  .vx__p i { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font: 500 12px/1 var(--font-text); font-style: normal; background: #e7ecf3; color: #2e4a6e; }
+  .vx__p b { font-weight: 500; }
+  .vx__p em { width: 8px; height: 8px; border-radius: 50%; background: var(--vx-ok); }
+  .vx__p em.off { background: transparent; box-shadow: inset 0 0 0 2px #b7791f; }
+  .vx__open { display: grid; justify-items: center; align-content: start; gap: 10px; padding: 22px 28px; }
+  .vx__open .av { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; background: #e7ecf3; color: #2e4a6e; font: 500 18px/1 var(--font-text); }
+  .vx__open h6 { margin: 0; font: 500 20px/1.2 var(--font-display); letter-spacing: -0.01em; }
+  .vx__chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 99px; background: var(--vx-ok-bg); color: var(--vx-ok); font-size: 12px; font-weight: 500; }
+  .vx__chip.off { background: #fbf0dc; color: #8a5a12; }
+  .vx__ask { font-size: 13px; color: var(--vx-muted); margin-top: 6px; }
+  .vx__code { display: flex; gap: 8px; }
+  .vx__code span { width: 40px; height: 48px; border-radius: 8px; border: 1px solid var(--vx-line); display: grid; place-items: center; font: 500 24px/1 var(--font-mono); background: #fff; }
+  .vx__code span:nth-child(3) { margin-right: 10px; }
+  .vx__btn { height: 38px; padding: 0 22px; border-radius: 8px; background: var(--vx-ink); color: #fff; display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; }
+  .vx__result { display: flex; gap: 10px; align-items: flex-start; width: min(100%, 420px); padding: 12px 14px; border-radius: 10px; background: var(--vx-ok-bg); color: #145c39; font-size: 13px; }
+  .vx__result b { display: block; font-size: 14px; font-weight: 500; color: var(--vx-ok); }
+  .vx__result svg { flex: none; width: 20px; height: 20px; stroke: var(--vx-ok); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .vx__acts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .vx__acts span { height: 30px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--vx-line); display: inline-flex; align-items: center; font-size: 13px; font-weight: 500; color: var(--vx-ink); }
+  .vx__acts span.warn { color: var(--vx-no); border-color: rgb(196 51 58 / .35); }
+  .vx__log { width: 100%; display: grid; gap: 0; margin-top: 6px; font-size: 13px; }
+  .vx__log li { list-style: none; display: grid; grid-template-columns: 1fr auto; gap: 12px; padding: 9px 0; border-top: 1px solid var(--vx-line); }
+  .vx__log li span:last-child { color: var(--vx-muted); }
+  .vx__log ul { margin: 0; padding: 0; }
+  .vx__log h6 { margin: 0 0 4px; font: 500 13px/1.3 var(--font-text); color: var(--vx-muted); }
+  .hero__window .vx__body { min-height: 400px; }
+  .vx__head { display: flex; align-items: center; gap: 14px; text-align: left; }
+  .vx__head h6 { margin-bottom: 4px; }
+  .vx__row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: center; }
+  .hero__window .vx__open { gap: 14px; padding: 18px 28px; }
+  .hero__window .vx__btn { height: 48px; }
+  @media (max-width: 639px) {
+    .vx__body { grid-template-columns: 1fr; } .vx__list { display: none; }
+    .vx__open { padding: 14px 16px; } .hero__window .vx__open { gap: 10px; padding: 14px 16px; } .hero__window .vx__head .av { display: none; } .hero__window .vx__btn { height: 40px; } .vx__code span { width: 34px; height: 42px; font-size: 20px; } .vx__bar .sp ~ span { display: none; }
+  }
+
+  /* ---- the app frame (sections-library.md, app-frame) ---- */
+  .app.ui { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); margin-top: var(--s-7); background: var(--u-bg); border: 1px solid var(--u-border); border-radius: var(--u-r); box-shadow: var(--u-shadow); }
+  .app > .app__pane { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+  .app > .app__pane + .app__pane { border-left: 1px solid var(--u-line); }
+  .app > .app__pane > .ui-panel { width: 100%; border: 0; border-radius: 0; box-shadow: none; }
+  .app > .app__pane::after { content: ""; position: absolute; inset: auto 0 0 0; height: 64px; background: linear-gradient(transparent, var(--u-bg)); pointer-events: none; }
+  .app.ui { --fx-bg: #ffffff; --fx-surface: #f6f5f2; --fx-ink: #16181d; --fx-muted: #5d6470; --fx-accent: #1f8a55; }
+  .app .vx { box-shadow: none; border-radius: 0; height: 100%; }
+  .app .vx__open { justify-items: start; padding: 28px 32px; }
+  .app .vx__head { display: flex; align-items: center; gap: 14px; }
+  @media (min-width: 1024px) and (max-width: 1279px) { .app.ui { grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); } }
+  @media (max-width: 1023px) {
+    .app.ui { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+    .app > .app__pane--list { max-height: 252px; }
+    .app > .app__pane--list::after { display: none; }
+    .app .ui-win__side { display: none; }
+    .app .ui-win__body { grid-template-columns: minmax(0, 1fr); }
+    .app > .app__pane + .app__pane { border-left: 0; border-top: 1px solid var(--u-line); }
+  }
+  @media (max-width: 639px) {
+    .app.ui { grid-template-rows: minmax(0, 1fr); }
+    .app > .app__pane--list { display: none; }
+    .app > .app__pane + .app__pane { border-top: 0; }
+    .app .vx__open { padding: 20px 16px; }
+  }
+
+  /* ---- card groups ---- */
+  #how .panel { --p-h: 300px; }
+  .close__word { font-size: clamp(64px, 24vw, 340px); line-height: 1.05; padding-bottom: .06em; }
+  @media (max-width: 639px) { .close__word { font-size: clamp(56px, 24vw, 120px); } }
+  .hero--centred .hero__lead { color: color-mix(in oklab, var(--ink) 84%, var(--bg)); }
+  .works-with { display: flex; gap: var(--s-5); align-items: center; margin-top: var(--s-5); }
+  .works-with img { width: 32px; height: 32px; }
+  #how .ui, #manage .ui { --u-bg: #ffffff; --u-surface: #f6f5f2; --u-ink: #16181d; --u-muted: #5d6470; --fx-bg: #ffffff; --fx-surface: #f6f5f2; --fx-ink: #16181d; --fx-muted: #5d6470; --fx-accent: #1f8a55; }
+  #manage .panel { --p-h: 300px; }
+  .mini { background: #fff; color: #16181d; border-radius: 12px; box-shadow: 0 0 0 1px rgb(0 0 0 / .08), 0 20px 40px -20px rgb(0 0 0 / .35); font: 400 13px/1.4 var(--font-text); padding: 16px 18px; }
+  .mini h5 { margin: 0 0 12px; font: 500 13px/1.3 var(--font-text); color: #5d6470; display: flex; justify-content: space-between; gap: 12px; }
+  .mini .totp { display: flex; align-items: center; gap: 14px; }
+  .mini .totp b { font: 500 30px/1 var(--font-mono); letter-spacing: .04em; }
+  .mini .ring { width: 30px; height: 30px; flex: none; }
+  .mini .ring circle { fill: none; stroke-width: 3; }
+  .mini .who { margin-top: 10px; color: #5d6470; }
+  .mini .ok { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 10px; background: #dcf5e6; color: #145c39; }
+  .mini .ok b { display: block; font-size: 14px; font-weight: 500; color: #1f8a55; }
+  .mini .no { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 10px; background: #fbe1e2; color: #8e2228; margin-top: 8px; }
+  .mini .no b { display: block; font-size: 14px; font-weight: 500; color: #c4333a; }
+  .mini svg.sh { flex: none; width: 20px; height: 20px; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .mini table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .mini th { text-align: left; font-weight: 500; color: #5d6470; padding: 0 0 8px; }
+  .mini td { padding: 8px 0; border-top: 1px solid rgb(22 24 29 / .1); }
+  .mini td:last-child, .mini th:last-child { text-align: right; }
+
+  /* ---- why: what a caller can know, what only the employee has ---- */
+  .facts { display: grid; gap: 0; margin: 0; padding: 0; }
+  .facts li { list-style: none; display: grid; grid-template-columns: 1fr auto; gap: var(--s-4); padding: var(--s-4) 0; border-bottom: 1px solid color-mix(in oklab, var(--ink) 14%, transparent); font-size: 16px; }
+  .facts li span:last-child { color: var(--muted); font-size: 14px; }
+  .why-col h3 { margin: 0 0 var(--s-4); font: 500 var(--t-card)/1.3 var(--font-text); }
+  .why-col p { margin: 0 0 var(--s-5); }
+  .why-code { display: flex; align-items: center; gap: var(--s-5); padding: var(--s-6); border-radius: var(--r-lg); background: var(--g-alt, var(--surface)); }
+  .why-code b { font: 500 56px/1 var(--font-mono); letter-spacing: .04em; }
+  .why-code .ring { width: 48px; height: 48px; flex: none; }
+  .why-code .ring circle { fill: none; stroke-width: 4; }
+
+  /* ---- setup ---- */
+  #setup .frame { --p-h: 560px; }
+  @media (max-width: 639px) { #setup .frame { --p-h: 340px; } #manage .panel { --p-h: 240px; } .why-col p { display: none; } .why-code { padding: var(--s-5); } .why-code b { font-size: 40px; } }
+  @media (min-width: 640px) and (max-width: 1279px) { #how { --h: 2 } }
+</style>
+</head>
+<body>
+<!-- type: software (site-kind software)
+     deal: hero centred, nav nav-centre, close close-word, footer footer-columns, rhythm dark-band, buttons pill, mark arc,
+           palette: the brand's own (start.mjs brand: #0E1116 / #F2EFE8 / #2EA66A, from the README art), type host, radius sharp, ground sky
+     effect: grain-gradient (the hero window's ground); card grounds: gradient-mesh on #manage (still)
+     moments: none dealt -->
+<header class="nav nav--centre">
+  <div class="wrap nav__bar">
+    <a class="nav__logo" href="#top"><span class="mark" data-mark="arc" aria-hidden="true"></span>Vixxing</a>
+    <nav class="nav__links" aria-label="Main">
+      <div class="nav__item">
+        <a class="nav__link" href="#dashboard">Product <svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+        <div class="nav__menu">
+          <div class="wrap grid">
+            <div class="menu-col span-3"><p class="t-label">On the call</p><a href="#dashboard">Dashboard<span>Find the caller, check the code</span></a><a href="#how">Verification<span>Three steps, a few seconds</span></a></div>
+            <div class="menu-col span-3"><p class="t-label">Behind the desk</p><a href="#manage">Enrollment<span>QR codes, CSV import, export</span></a><a href="#setup">Self-hosting<span>Django on your own server</span></a></div>
+          </div>
+        </div>
+      </div>
+      <div class="nav__item"><a class="nav__link" href="#why">Security</a></div>
+      <div class="nav__item"><a class="nav__link" href="#setup">Setup</a></div>
+      <div class="nav__item"><a class="nav__link" href="#faq">Questions</a></div>
+    </nav>
+    <div class="nav__actions">
+      <a class="btn btn--primary" href="https://github.com/miles-howell/vixxing">Get Vixxing on GitHub</a>
+    </div>
+    <button class="nav__toggle" type="button" aria-expanded="false" aria-label="Menu"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M2 5h14M2 13h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero hero--centred" aria-labelledby="hero-h">
+    <div class="wrap"><div class="hero-text">
+      <div class="hero__c">
+        <a class="pill" href="https://github.com/miles-howell/vixxing/blob/main/LICENSE"><span>Open source under GPL-3.0</span><span class="muted">Read the licence</span></a>
+        <h1 id="hero-h">Caller verification for help desks</h1>
+        <p class="hero__lead">Before a password or MFA reset, the caller reads a 6-digit code from their phone that changes every 30 seconds.</p>
+        <div class="btn-row"><a class="btn btn--primary" href="https://github.com/miles-howell/vixxing">Get Vixxing on GitHub</a><a class="btn btn--secondary" href="#dashboard">See the dashboard</a></div>
+      </div>
+      <div class="hero__window" data-fx="grain-gradient" data-fx-seed="7" data-fx-palette='{"bg":"#c6d3df","surface":"#d6e0e9","ink":"#25303a","accent":"#3f6a92"}' role="img" aria-label="The Vixxing dashboard: Jordan Avery is selected, the code 482 913 is entered and the result reads Caller verified, safe to proceed with the reset">
+        <div class="ly-piece ui ui-vx vx" aria-hidden="true">
+          <div class="vx__bar"><span class="vx__dots"><i></i><i></i><i></i></span><span><b>Vixxing</b> · Verify caller</span><span class="sp"></span><span>4 of 6 enrolled</span></div>
+          <div class="vx__body">
+            <div class="vx__list">
+              <h5>Who's calling?</h5>
+              <div class="vx__search">Name or email, then Enter</div>
+              <div class="vx__p is-on"><i>JA</i><b>Jordan Avery</b><em></em></div>
+              <div class="vx__p"><i>HK</i><b>Hannah Kim</b><em class="off"></em></div>
+              <div class="vx__p"><i>PN</i><b>Priya Natarajan</b><em></em></div>
+              <div class="vx__p"><i>SO</i><b>Sam Okafor</b><em></em></div>
+              <div class="vx__p"><i>ER</i><b>Elena Ruiz</b><em></em></div>
+              <div class="vx__p"><i>MW</i><b>Marcus Webb</b><em class="off"></em></div>
+            </div>
+            <div class="vx__open" data-ly-steps="900">
+              <div class="vx__head"><span class="av">JA</span><div><h6>Jordan Avery</h6><span class="vx__chip">Enrolled</span></div></div>
+              <div class="vx__row"><div class="vx__code" data-step><span>4</span><span>8</span><span>2</span><span>9</span><span>1</span><span>3</span></div><span class="vx__btn" data-step>Verify caller</span></div>
+              <div class="vx__result" data-step><svg viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V6z"/><path d="m8.8 12.2 2.3 2.3 4.2-4.6"/></svg><span><b>Caller verified</b>Jordan Avery at 10:42 AM. Safe to proceed with the reset.</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <section class="section" id="dashboard" aria-labelledby="dashboard-h">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 id="dashboard-h">Every employee in the agent dashboard</h2>
+        <p>Pick a name, email them a QR code and watch their status turn to Enrolled. <a class="link" href="#manage">See enrollment tools</a></p>
+      </div>
+      <div class="ui app fill" role="img" aria-label="The employee list beside Hannah Kim's record: not enrolled, with Email QR code, and a delivery log showing Microsoft Graph sent the last message" data-ui-pause-host>
+        <div class="app__pane app__pane--list" data-ui-loop>
+          <div class="ui ui-panel ui-win" data-ui="window" data-open="Not enrolled" data-work="Sending QR" data-done="Enrolled">
+            <div class="ui-win__bar">
+              <span class="ui-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span class="ui-win__crumb">Vixxing <i>/</i> <b>Employees</b></span>
+              <span class="ui-spacer"></span>
+              <span class="ui-win__search" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></svg><span class="ui-win__ph">Search</span><span class="ui-kbd">/</span></span>
+            </div>
+            <div class="ui-win__body">
+              <nav class="ui-win__side" aria-hidden="true">
+                <span class="ui-win__nav is-on"><svg class="ui-icon" viewBox="0 0 16 16"><circle cx="8" cy="6" r="2.5"/><path d="M3.5 13.5c.6-2.3 2.4-3.5 4.5-3.5s3.9 1.2 4.5 3.5"/></svg>All<em>6</em></span>
+                <span class="ui-win__nav"><svg class="ui-icon" viewBox="0 0 16 16"><path d="m3.5 8.4 2.8 2.8 6.2-6.4"/></svg>Enrolled<em>4</em></span>
+                <span class="ui-win__nav"><svg class="ui-icon" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5"/><path d="M8 5v3l2 1.5"/></svg>Pending<em>2</em></span>
+                <span class="ui-win__label">Actions</span>
+                <span class="ui-win__nav"><span class="ui-win__hash">+</span>Import</span>
+                <span class="ui-win__nav"><span class="ui-win__hash">↓</span>Export</span>
+              </nav>
+              <div class="ui-win__main">
+                <div class="ui-win__cols" aria-hidden="true"><span>Employee</span><span>Last action</span><span>Status</span><span>Age</span></div>
+                <ul class="ui-win__rows">
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="1">HK</span><span class="ui-win__who">Hannah Kim</span><span class="ui-win__sub">Added from CSV</span><span class="ui-win__st" data-st>Not enrolled</span><span class="ui-win__age">2m</span></li>
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="3">MW</span><span class="ui-win__who">Marcus Webb</span><span class="ui-win__sub">Unenrolled, new phone</span><span class="ui-win__st" data-st>Not enrolled</span><span class="ui-win__age">9m</span></li>
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="4">JA</span><span class="ui-win__who">Jordan Avery</span><span class="ui-win__sub">Verified on a call</span><span class="ui-win__st is-done" data-st>Enrolled</span><span class="ui-win__age">14m</span></li>
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="2">PN</span><span class="ui-win__who">Priya Natarajan</span><span class="ui-win__sub">QR sent via Graph</span><span class="ui-win__st is-done" data-st>Enrolled</span><span class="ui-win__age">1h</span></li>
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="5">SO</span><span class="ui-win__who">Sam Okafor</span><span class="ui-win__sub">QR regenerated</span><span class="ui-win__st is-done" data-st>Enrolled</span><span class="ui-win__age">3h</span></li>
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="3">ER</span><span class="ui-win__who">Elena Ruiz</span><span class="ui-win__sub">QR sent via SMTP</span><span class="ui-win__st is-done" data-st>Enrolled</span><span class="ui-win__age">1d</span></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="app__pane app__pane--open">
+          <div class="ui ui-vx vx" aria-hidden="true">
+            <div class="vx__bar"><span><b>Hannah Kim</b> · Employee</span><span class="sp"></span></div>
+            <div class="vx__open">
+              <div class="vx__head"><span class="av">HK</span><div><h6>Hannah Kim</h6><span class="vx__chip off">Not enrolled</span></div></div>
+              <span class="vx__ask">No authenticator set up yet. The QR code goes to the address on file, inline and as enrollment_qr.png.</span>
+              <span class="vx__btn">Email QR code</span>
+              <div class="vx__log">
+                <h6>Delivery log</h6>
+                <ul>
+                  <li><span>Enrollment email to Priya Natarajan</span><span>Microsoft Graph</span></li>
+                  <li><span>Enrollment email to Elena Ruiz</span><span>SMTP, Graph failed first</span></li>
+                  <li><span>New QR for Sam Okafor</span><span>Microsoft Graph</span></li>
+                  <li><span>Marcus Webb unenrolled, account kept</span><span>No email</span></li>
+                  <li><span>Hannah Kim added from CSV</span><span>No email</span></li>
+                </ul>
+              </div>
+              <div class="vx__acts"><span>Regenerate QR</span><span>Unenroll</span><span class="warn">Delete</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="--hm: 2" id="how" aria-labelledby="how-h">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 id="how-h">Verify a caller in 3 steps. <span class="muted">Enroll once, then check on every call.</span></h2>
+      </div>
+      <div class="grid">
+        <article class="card card--row card--open span-4 m-nolift">
+          <span class="step-num">1</span>
+          <h3>Email the QR code</h3>
+          <p>A new TOTP secret is made and sent to the employee as a QR code.</p>
+          <div class="panel" data-fx="gradient-mesh" data-fx-seed="11" data-fx-params='{"drift":0}' data-fx-palette='{"bg":"#c6d3df","surface":"#d6e0e9","ink":"#25303a","accent":"#3f6a92"}'>
+            <div class="stage stage--fade-b"><div class="at-rise fit" style="--fit-max:380px;--ax:24px;--ay:calc(100% - 180px);--ay-sm:calc(100% - 180px)" data-ui-loop>
+              <div class="ui ui-notify" data-ui="notify">
+                <ul class="ui-notify__list" data-notify-list>
+                  <li class="ui-note"><span class="ui-note__ico"><svg class="ui-icon" viewBox="0 0 16 16"><path d="M2.5 4.5h11v7h-11z"/><path d="m2.5 4.5 5.5 4 5.5-4"/></svg></span><span class="ui-note__text"><span class="ui-note__title">QR code sent to Hannah Kim<time>now</time></span><span class="ui-note__body">Delivered by Microsoft Graph</span></span></li>
+                  <li class="ui-note"><span class="ui-avatar ui-note__av" data-tone="5">ER</span><span class="ui-note__text"><span class="ui-note__title">Elena Ruiz enrolled<time>1d</time></span><span class="ui-note__body">Graph failed, SMTP delivered</span></span></li>
+                  <li class="ui-note"><span class="ui-avatar ui-note__av" data-tone="2">PN</span><span class="ui-note__text"><span class="ui-note__title">Priya Natarajan enrolled<time>1h</time></span><span class="ui-note__body">Delivered by Microsoft Graph</span></span></li>
+                </ul>
+              </div>
+            </div></div>
+          </div>
+        </article>
+        <article class="card card--row card--open span-4 m-nolift">
+          <span class="step-num">2</span>
+          <h3>Scan it into an authenticator</h3>
+          <p>Microsoft Authenticator, Google Authenticator or any RFC 6238 app shows the code.</p>
+          <div class="panel" data-fx="gradient-mesh" data-fx-seed="23" data-fx-params='{"drift":0}' data-fx-palette='{"bg":"#cdd6c6","surface":"#dce3d6","ink":"#262d24","accent":"#6c8e63"}'>
+            <div class="stage"><div class="at-rise fit" style="--fit-max:300px;--ax:max(24px, 50% - 150px);--ay:48px;--ay-sm:40px">
+              <div class="mini" aria-hidden="true">
+                <h5><span>Company HelpDesk</span><span>18 s</span></h5>
+                <div class="totp"><b>482 913</b><svg class="ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15" stroke="#e5e7eb"/><circle cx="18" cy="18" r="15" stroke="#1f8a55" stroke-dasharray="56.5 94.2" transform="rotate(-90 18 18)"/></svg></div>
+                <p class="who">jordan.avery</p>
+              </div>
+            </div></div>
+          </div>
+        </article>
+        <article class="card card--row card--open span-4 m-nolift">
+          <span class="step-num">3</span>
+          <h3>Check the code on the call</h3>
+          <p>The agent types the code the caller reads out and clicks Verify.</p>
+          <div class="panel" data-fx="gradient-mesh" data-fx-seed="37" data-fx-params='{"drift":0}' data-fx-palette='{"bg":"#d9ccb7","surface":"#e9e0d2","ink":"#2a2622","accent":"#a8794a"}'>
+            <div class="stage"><div class="at-rise fit" style="--fit-max:320px;--ax:max(24px, 50% - 160px);--ay:48px;--ay-sm:40px">
+              <div class="mini" aria-hidden="true">
+                <div class="ok"><svg class="sh" viewBox="0 0 24 24" stroke="#1f8a55"><path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V6z"/><path d="m8.8 12.2 2.3 2.3 4.2-4.6"/></svg><span><b>Caller verified</b>Safe to proceed with the reset.</span></div>
+                <div class="no"><svg class="sh" viewBox="0 0 24 24" stroke="#c4333a"><path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V6z"/><path d="m9.5 9.5 5 5M14.5 9.5l-5 5"/></svg><span><b>Not verified</b>Invalid code. Do not proceed.</span></div>
+              </div>
+            </div></div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section ground-inverse" id="why" aria-labelledby="why-h">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 id="why-h">Security questions leak. <span class="muted">A live code from the enrolled phone does not.</span></h2>
+      </div>
+      <div class="grid fill">
+        <div class="why-col span-6">
+          <h3>What an attacker can find out</h3>
+          <ul class="facts">
+            <li><span>Caller ID</span><span>Spoofed</span></li>
+            <li><span>Employee ID</span><span>In the directory</span></li>
+            <li><span>Date of birth</span><span>In breach dumps</span></li>
+            <li><span>Manager's name</span><span>On LinkedIn</span></li>
+            <li><span>Security answers</span><span>Guessed or leaked</span></li>
+          </ul>
+        </div>
+        <div class="why-col span-6 start-7">
+          <h3>What only the employee has</h3>
+          <p>The current code, read from the phone they enrolled. The server accepts this 30-second window and one either side for clock drift.</p>
+          <div class="why-code frame" role="img" aria-label="An authenticator code, 482 913, with 18 seconds left">
+            <b aria-hidden="true">482 913</b>
+            <svg class="ring" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15" stroke="rgb(14 17 22 / .14)"/><circle cx="18" cy="18" r="15" stroke="#1f8a55" stroke-dasharray="56.5 94.2" transform="rotate(-90 18 18)"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section g2" id="manage" aria-labelledby="manage-h">
+    <div class="wrap">
+      <div class="group">
+        <div class="section-head">
+          <h2 id="manage-h">Enrollment for the whole desk. <span class="muted">Add, re-issue and export from the dashboard.</span></h2>
+        </div>
+        <div class="grid">
+          <article class="card card--row card--open span-6 m-nolift">
+            <h3>Re-issues a QR when a phone is lost</h3>
+            <p>Regenerate QR makes a new secret and emails it, so the old device stops working.</p>
+            <div class="panel" style="background:#c6d3df" role="img" aria-label="A record for Sam Okafor: Regenerate QR emails a new secret, the old phone is rejected, Unenroll clears the secret, Delete removes the account">
+              <div class="stage stage--fade-b"><div class="at-rise fit" style="--fit-max:420px;--ax:max(24px, 50% - 210px);--ay:48px;--ay-sm:40px">
+                <div class="mini" aria-hidden="true">
+                  <h5><span>Sam Okafor</span><span>Enrolled</span></h5>
+                  <table><tr><th>Action</th><th>Result</th></tr>
+                    <tr><td>Regenerate QR</td><td>New secret emailed</td></tr>
+                    <tr><td>Old phone</td><td>Codes rejected</td></tr>
+                    <tr><td>Unenroll</td><td>Secret cleared, account kept</td></tr>
+                    <tr><td>Delete</td><td>Account and secret removed</td></tr>
+                  </table>
+                </div>
+              </div></div>
+            </div>
+          </article>
+          <article class="card card--row card--open span-6 m-nolift">
+            <h3>Sends mail through Graph, then SMTP</h3>
+            <p>Microsoft Graph is tried first. If it fails, the SMTP mailer delivers and the log says so.</p>
+            <div class="panel" style="background:#dce3d6" role="img" aria-label="A delivery log: three enrollment emails delivered by Microsoft Graph and one by SMTP after Graph failed">
+              <div class="stage stage--fade-b"><div class="at-rise fit" style="--fit-max:400px;--ax:max(24px, 50% - 200px);--ay:48px;--ay-sm:40px">
+                <div class="mini" aria-hidden="true">
+                  <h5><span>Delivery log</span><span>Today</span></h5>
+                  <table><tr><th>Enrollment email</th><th>Delivered by</th></tr>
+                    <tr><td>Priya Natarajan</td><td>Microsoft Graph</td></tr>
+                    <tr><td>Elena Ruiz</td><td>SMTP, Graph failed</td></tr>
+                    <tr><td>Sam Okafor</td><td>Microsoft Graph</td></tr>
+                    <tr><td>Hannah Kim</td><td>Microsoft Graph</td></tr>
+                  </table>
+                </div>
+              </div></div>
+            </div>
+          </article>
+        </div>
+      </div>
+      <div class="grid">
+        <article class="card card--row card--open span-6 m-nolift">
+          <h3>Imports staff from a CSV file</h3>
+          <p>Upload a file with an email column. Import creates accounts and never sends mail.</p>
+          <div class="panel" style="background:#e9e0d2" role="img" aria-label="An import of employees.csv: emails and names read, accounts added to the Employees group, nobody enrolled">
+            <div class="stage stage--fade-b"><div class="at-rise fit" style="--fit-max:360px;--ax:max(24px, 50% - 180px);--ay:48px;--ay-sm:40px">
+              <div class="ui ui-panel ui-checks" data-ui="checklist">
+                <div class="ui-checks__head"><div class="ui-title">Import employees.csv</div><span class="ui-spacer"></span><div class="ui-meta" data-checks-count>4 of 4</div></div>
+                <div class="ui-checks__bar"><i data-checks-bar style="--k:1"></i></div>
+                <ul class="ui-checks__list">
+                  <li class="ui-check is-done"><span class="ui-check__box"><svg viewBox="0 0 16 16"><path d="m4.5 8.2 2.3 2.3 4.7-5"/></svg></span><span class="ui-check__label">Read the email column</span></li>
+                  <li class="ui-check is-done"><span class="ui-check__box"><svg viewBox="0 0 16 16"><path d="m4.5 8.2 2.3 2.3 4.7-5"/></svg></span><span class="ui-check__label">Read first and last names</span></li>
+                  <li class="ui-check is-done"><span class="ui-check__box"><svg viewBox="0 0 16 16"><path d="m4.5 8.2 2.3 2.3 4.7-5"/></svg></span><span class="ui-check__label">Add to the Employees group</span></li>
+                  <li class="ui-check is-done"><span class="ui-check__box"><svg viewBox="0 0 16 16"><path d="m4.5 8.2 2.3 2.3 4.7-5"/></svg></span><span class="ui-check__label">Leave everyone unenrolled</span></li>
+                </ul>
+              </div>
+            </div></div>
+          </div>
+        </article>
+        <article class="card card--row card--open span-6 m-nolift">
+          <h3>Exports status, never secrets</h3>
+          <p>Export (CSV) lists names, usernames and enrollment for everyone or the selected rows.</p>
+          <div class="panel" style="background:#d6e0e9" role="img" aria-label="An export of employees.csv listing name, username and whether each person is enrolled">
+            <div class="stage stage--fade-b"><div class="at-rise fit" style="--fit-max:420px;--ax:max(24px, 50% - 210px);--ay:48px;--ay-sm:40px">
+              <div class="mini" aria-hidden="true">
+                <h5><span>employees.csv</span><span>6 rows</span></h5>
+                <table><tr><th>Name</th><th>Username</th><th>Enrolled</th></tr>
+                  <tr><td>Jordan Avery</td><td>javery</td><td>Yes</td></tr>
+                  <tr><td>Hannah Kim</td><td>hkim</td><td>No</td></tr>
+                  <tr><td>Priya Natarajan</td><td>pnatarajan</td><td>Yes</td></tr>
+                  <tr><td>Sam Okafor</td><td>sokafor</td><td>Yes</td></tr>
+                  <tr><td>Elena Ruiz</td><td>eruiz</td><td>Yes</td></tr>
+                </table>
+              </div>
+            </div></div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="setup" aria-labelledby="setup-h">
+    <div class="wrap">
+      <div class="grid">
+        <div class="span-6 stack-4">
+          <h2 id="setup-h">Runs on a server inside your network</h2>
+          <p>Vixxing is a Django 6.1 app with SQLite by default. Clone it, fill in <code>.env</code>, migrate and run it under Gunicorn behind an internal proxy.</p>
+          <p class="muted">Built for a trusted LAN, not the public internet. Read the security notes before you deploy.</p>
+          <p><a class="link" href="https://github.com/miles-howell/vixxing#scope-and-security-posture-lan-only">Read the security notes</a></p>
+        </div>
+        <div class="frame span-6 start-7" style="height:var(--p-h);background:#c6d3df" data-visual role="img" aria-label="A terminal running python manage.py migrate in the TOTP folder: every app migrates OK and the database is ready">
+          <div class="stage"><div class="at-rise fit" style="--fit-max:560px;--ax:max(32px, 50% - 280px);--ay:40px;--ay-sm:32px">
+            <div class="ui ui-panel ui-term" data-ui="terminal-run">
+              <div class="ui-term__head">
+                <span class="ui-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+                <span class="ui-term__title">vixxing/TOTP</span>
+                <span class="ui-meta">bash</span>
+                <span class="ui-spacer"></span>
+                <span class="ui-chip ui-chip--plain ui-term__branch"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="3.5" r="1.5"/><circle cx="5" cy="12.5" r="1.5"/><circle cx="11" cy="5.5" r="1.5"/><path d="M5 5v6M11 7c0 2.6-6 1.8-6 4"/></svg>main</span>
+              </div>
+              <div class="ui-term__screen" data-term-screen>
+                <div class="ui-term__track" data-term-track>
+                  <div class="ui-term__ln ui-term__cmd"><span class="ui-term__cwd">~/<span class="ui-term__up">vixxing/</span>TOTP</span><span class="ui-term__sig">$</span><span class="ui-term__typed" data-term-cmd>python manage.py migrate</span></div>
+                  <div class="ui-term__ln ui-term__meter" data-term-out data-term-meter><span class="ui-term__bar" style="--p:1"><i></i></span><span class="ui-term__count" data-term-count>6 of 6 apps</span></div>
+                  <div class="ui-term__ln ui-term__log" data-term-out data-term-step><svg class="ui-term__tick" viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 8.4 2.8 2.8 6.2-6.4"/></svg><span class="ui-term__path">contenttypes</span><span class="ui-term__n">OK</span></div>
+                  <div class="ui-term__ln ui-term__log" data-term-out data-term-step><svg class="ui-term__tick" viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 8.4 2.8 2.8 6.2-6.4"/></svg><span class="ui-term__path">auth</span><span class="ui-term__n">OK</span></div>
+                  <div class="ui-term__ln ui-term__log" data-term-out data-term-step><svg class="ui-term__tick" viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 8.4 2.8 2.8 6.2-6.4"/></svg><span class="ui-term__path">admin</span><span class="ui-term__n">OK</span></div>
+                  <div class="ui-term__ln ui-term__log" data-term-out data-term-step><svg class="ui-term__tick" viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 8.4 2.8 2.8 6.2-6.4"/></svg><span class="ui-term__path">sessions</span><span class="ui-term__n">OK</span></div>
+                  <div class="ui-term__ln ui-term__log" data-term-out data-term-step><svg class="ui-term__tick" viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 8.4 2.8 2.8 6.2-6.4"/></svg><span class="ui-term__path">verify.0001_initial</span><span class="ui-term__n">OK</span></div>
+                  <div class="ui-term__ln ui-term__log" data-term-out data-term-step><svg class="ui-term__tick" viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 8.4 2.8 2.8 6.2-6.4"/></svg><span class="ui-term__path">verify.0002_alter_employeemfa</span><span class="ui-term__n">OK</span></div>
+                  <div class="ui-term__ln ui-term__gap" data-term-out aria-hidden="true"></div>
+                  <div class="ui-term__ln ui-term__sum" data-term-out><span class="ui-term__key">Next</span><span class="ui-term__val">python manage.py createsuperuser</span></div>
+                  <div class="ui-term__ln ui-term__done" data-term-out data-term-done><span class="ui-term__ok"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4.5 8.3 2.4 2.4 4.6-5"/></svg></span><b>Done</b><span class="ui-term__dim">database ready</span></div>
+                  <div class="ui-term__ln ui-term__cmd" data-term-next><span class="ui-term__cwd">~/<span class="ui-term__up">vixxing/</span>TOTP</span><span class="ui-term__sig">$</span><span class="ui-term__typed"></span><i class="ui-term__caret" aria-hidden="true"></i></div>
+                </div>
+              </div>
+            </div>
+          </div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="faq" aria-labelledby="faq-h">
+    <div class="wrap">
+      <div class="grid">
+        <div class="span-6 stack-4">
+          <h2 id="faq-h">Questions</h2>
+          <p class="muted">The rest is in the README on GitHub.</p>
+          <div class="works-with" aria-label="Works with">
+            <img data-icon="django" src="assets/icons/django.svg" alt="Django">
+            <img data-icon="python" src="assets/icons/python.svg" alt="Python">
+            <img data-icon="logos:microsoft-icon" src="assets/icons/microsoft-icon.svg" alt="Microsoft Graph">
+            <img data-icon="github" src="assets/icons/github.svg" alt="GitHub" class="ic-ink">
+          </div>
+        </div>
+        <div class="faq span-6 start-7">
+          <div class="faq__item"><h3>What does Vixxing cost?</h3><p>Nothing. It is open source under GPL-3.0 and you host it.</p></div>
+          <div class="faq__item"><h3>Do I need Microsoft 365?</h3><p>No. Graph is the default mailer; SMTP works on its own.</p></div>
+          <div class="faq__item"><h3>Where are the TOTP secrets stored?</h3><p>In its database, unencrypted. CSV exports never include them.</p></div>
+          <div class="faq__item"><h3>Can I put it on the internet?</h3><p>Not as shipped. Add TLS, secure cookies and access controls first.</p></div>
+          <div class="faq__item"><h3>Which authenticator apps work?</h3><p>Any RFC 6238 app, such as Microsoft or Google Authenticator.</p></div>
+          <div class="faq__item"><h3>Who can use the dashboard?</h3><p>Django staff users only. There is no self-service portal.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer closing" id="contact" aria-labelledby="close-h">
+  <div class="wrap">
+    <div class="closing__cta close--word">
+      <div class="section-head--split">
+        <div><h2 id="close-h">Check every caller before a reset</h2><p class="t-lead">Clone it, add your mail settings and verify the first call today.</p></div>
+        <a class="btn btn--primary" href="https://github.com/miles-howell/vixxing">Get Vixxing on GitHub<svg class="m-arrow" viewBox="0 0 12 12" aria-hidden="true"><path class="m-arrow__stem" d="M1 6h8"/><path class="m-arrow__head" d="M4.5 2.5 8 6l-3.5 3.5"/></svg></a>
+      </div>
+      <p class="close__word" aria-hidden="true">Vixxing</p>
+    </div>
+    <div class="closing__links">
+      <div class="grid">
+        <div class="span-4 stack-4">
+          <a class="nav__logo" href="#top"><span class="mark" data-mark="arc" aria-hidden="true"></span>Vixxing</a>
+          <p class="footer__lede">Caller verification for IT help desks.</p>
+        </div>
+        <div class="span-2 footer__col"><h4>Product</h4><ul><li><a href="#dashboard">Dashboard</a></li><li><a href="#how">Verification</a></li><li><a href="#manage">Enrollment</a></li></ul></div>
+        <div class="span-2 footer__col"><h4>Security</h4><ul><li><a href="#why">Why a code</a></li><li><a href="https://github.com/miles-howell/vixxing#scope-and-security-posture-lan-only">LAN-only scope</a></li></ul></div>
+        <div class="span-2 footer__col"><h4>Setup</h4><ul><li><a href="#setup">Self-hosting</a></li><li><a href="https://github.com/miles-howell/vixxing#configuration">Configuration</a></li></ul></div>
+        <div class="span-2 footer__col"><h4>Questions</h4><ul><li><a href="#faq">FAQ</a></li><li><a href="https://github.com/miles-howell/vixxing/issues">Issues on GitHub</a></li></ul></div>
+      </div>
+      <div class="footer__legal">
+        <span>&copy; 2026 Vixxing &nbsp; <a href="https://github.com/miles-howell/vixxing/blob/main/LICENSE">GPL-3.0 licence</a></span>
+        <div class="socials"></div>
+        <span class="muted">Product names and logos are trademarks of their owners</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script type="module" src="assets/system.js"></script>
+<script type="module" src="assets/motion/motion.js"></script>
+<script type="module" src="assets/layout/layout.js"></script>
+</body>
+</html>
