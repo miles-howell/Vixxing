@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy Policy · Vixxing</title>
+  <meta name="description" content="How vixxing.com handles visitor data: no cookies, no analytics, no accounts. The demo runs entirely in your browser.">
+  <meta name="theme-color" content="#0E1116">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/legal.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="wrap">
+    <a class="brand" href="./"><img src="assets/favicon.svg" alt="">Vixxing</a>
+    <div class="nav-links">
+      <a href="privacy.html" aria-current="page">Privacy</a>
+      <a href="terms.html">Terms</a>
+      <a href="https://github.com/miles-howell/vixxing">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<main class="doc">
+  <p class="eyebrow">Legal</p>
+  <h1>Privacy Policy</h1>
+  <p class="meta">Effective November 5, 2026</p>
+
+  <div class="summary">
+    <p>The short version</p>
+    <ul>
+      <li>vixxing.com sets no cookies, runs no analytics or tracking scripts, and has no accounts, sign-ups, or contact forms.</li>
+      <li>The verification demo runs entirely in your browser. Codes you type into it are never sent anywhere.</li>
+      <li>Two third parties see basic request data when you load the page: GitHub, which hosts the site, and Google Fonts, which serves the typefaces.</li>
+      <li>The self-hosted Vixxing software does not send any data to us. If your employer runs it, your employer controls that data.</li>
+    </ul>
+  </div>
+
+  <h2 id="scope">1. What this policy covers</h2>
+  <p>This policy covers the website at <a href="https://vixxing.com">vixxing.com</a> (the “Site”), operated by the maintainer of the open-source Vixxing project (“we”, “us”). The Site is a static informational page about the software.</p>
+  <p>It does not cover:</p>
+  <ul>
+    <li><strong>Installations of the Vixxing software.</strong> Vixxing is self-hosted. Each organization that installs it runs it on its own servers and is solely responsible for the data it holds. See <a href="#software">section 6</a>.</li>
+    <li><strong>GitHub.</strong> Links to the source code, documentation, and license go to github.com, which is governed by the <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub General Privacy Statement</a>.</li>
+  </ul>
+
+  <h2 id="collect">2. Information we collect</h2>
+  <p><strong>We do not collect personal information through the Site.</strong> Specifically, the Site:</p>
+  <ul>
+    <li>has no forms that submit data, no newsletter, no login, and no comment system;</li>
+    <li>sets no cookies;</li>
+    <li>does not use <code>localStorage</code>, <code>sessionStorage</code>, IndexedDB, or any other browser storage;</li>
+    <li>loads no analytics, advertising, social-media, or session-recording scripts; and</li>
+    <li>uses no tracking pixels or fingerprinting.</li>
+  </ul>
+  <p>We have no server of our own behind the Site and receive no server logs from it.</p>
+
+  <h2 id="browser">3. What happens in your browser</h2>
+  <p>The Site includes a small amount of JavaScript that runs locally on your device and sends nothing over the network:</p>
+  <ul>
+    <li><strong>Verification demo.</strong> The six-digit codes shown are generated in your browser from the current time. They are random demo values, not real TOTP codes, and are tied to no real account. When you type a code and press “Verify caller”, the check happens in your browser. The code is not transmitted, stored, or logged.</li>
+    <li><strong>Copy button.</strong> Pressing “Copy” in the Quick Start section writes the shell commands to your clipboard. The Site writes to your clipboard only when you press that button and never reads from it.</li>
+    <li><strong>Page effects.</strong> Scroll-based animations and the navigation bar's border use your scroll position locally. Nothing about your scrolling is recorded.</li>
+  </ul>
+
+  <h2 id="third-parties">4. Third parties that receive request data</h2>
+  <p>Loading any web page sends some technical information to the servers that deliver it. For the Site, that means:</p>
+  <h3>GitHub Pages (hosting)</h3>
+  <p>The Site is hosted on GitHub Pages. When you visit, GitHub receives standard request information such as your IP address, browser user agent, the page requested, and the time of the request. GitHub states that it may log visitors' IP addresses for security purposes. We do not have access to these logs. See the <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub General Privacy Statement</a> and the <a href="https://docs.github.com/en/pages/getting-started-with-github-pages/about-github-pages#data-collection">GitHub Pages data collection notice</a>.</p>
+  <h3>Google Fonts (typefaces)</h3>
+  <p>The Site loads the Inter and JetBrains Mono typefaces from Google Fonts (<code>fonts.googleapis.com</code> and <code>fonts.gstatic.com</code>). Your browser therefore sends Google your IP address, user agent, and the referring page. Google states that the Fonts API does not set cookies and does not use this data to build advertising profiles. See the <a href="https://developers.google.com/fonts/faq/privacy">Google Fonts privacy FAQ</a> and the <a href="https://policies.google.com/privacy">Google Privacy Policy</a>.</p>
+  <p>To avoid the Google Fonts request, you can block those domains with a content blocker. The Site falls back to your system fonts and works normally.</p>
+  <h3>Links to other sites</h3>
+  <p>Links to GitHub, Microsoft, Google, or other websites take you to services we do not control. Their own privacy policies apply once you leave the Site.</p>
+
+  <h2 id="use">5. How we use and share information</h2>
+  <p>We do not collect personal information through the Site, so we do not use, sell, rent, or share any. We do not use the Site for advertising or profiling.</p>
+  <p>If you contact us voluntarily, for example by opening a GitHub issue or emailing the maintainer, we use what you send only to respond. Anything you post on GitHub is public and is governed by GitHub's terms.</p>
+
+  <h2 id="software">6. The Vixxing software you install</h2>
+  <p>Vixxing is open-source software that organizations download and run on their own infrastructure. We are not a service provider for those installations:</p>
+  <ul>
+    <li>The software contains no telemetry, analytics, or “phone home” behavior. It sends no data to us or to this Site.</li>
+    <li>An installation stores the data its operator enters: employee names, email addresses, usernames, enrollment status, and TOTP secrets. It stores these in the operator's own database. The software does not encrypt TOTP secrets at rest; protecting the database and host is the operator's job.</li>
+    <li>Enrollment emails are sent through the email provider the operator configures, such as Microsoft Graph or the operator's own SMTP server. That provider's terms apply.</li>
+  </ul>
+  <p>If you are an employee whose authenticator was enrolled through Vixxing, the organization running it (usually your employer) controls your data. Direct any questions or requests about it to that organization. We cannot see, access, correct, or delete it.</p>
+
+  <h2 id="rights">7. Your choices and rights</h2>
+  <p>Depending on where you live, you may have rights to access, correct, delete, or object to the processing of your personal information, for example under the GDPR or CCPA. Because the Site does not collect personal information, we have nothing about you to provide or delete. For data that GitHub or Google receives when you load the Site, use the controls those companies provide in the policies linked above.</p>
+
+  <h2 id="children">8. Children</h2>
+  <p>The Site is aimed at IT professionals and is not directed to children. We do not knowingly collect information from anyone, including children under 13 (or under 16 in the EEA).</p>
+
+  <h2 id="security">9. Security</h2>
+  <p>The Site is served over HTTPS by GitHub Pages. It is static and handles no user data, so there is very little to protect. For security issues in the Vixxing software itself, please open an issue or use GitHub's private vulnerability reporting on the <a href="https://github.com/miles-howell/vixxing">repository</a>.</p>
+
+  <h2 id="changes">10. Changes to this policy</h2>
+  <p>If the Site's behavior changes, for example if we add analytics or a contact form, we will update this policy before or when the change takes effect and revise the date above. The full history of this page is public in the <a href="https://github.com/miles-howell/vixxing/commits/main/docs/privacy.html">repository's commit log</a>.</p>
+
+  <h2 id="contact">11. Contact</h2>
+  <p>For questions about this policy, open an issue at <a href="https://github.com/miles-howell/vixxing/issues">github.com/miles-howell/vixxing/issues</a>.</p>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a class="brand" href="./"><img src="assets/favicon.svg" alt="">Vixxing</a>
+    <div class="links">
+      <a href="privacy.html">Privacy</a>
+      <a href="terms.html">Terms</a>
+      <a href="https://github.com/miles-howell/vixxing/blob/main/LICENSE">GNU GPL v3.0</a>
+      <a href="https://github.com/miles-howell/vixxing">GitHub</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
